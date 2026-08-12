@@ -1,0 +1,32 @@
+data_dir: ./data
+api:
+  listen: 0.0.0.0:7443
+  metrics_listen: 127.0.0.1:9090
+  tls:
+    certificate: /etc/bgpls/server.crt
+    private_key: /etc/bgpls/server.key
+    client_cas:
+      - /etc/bgpls/client-ca.crt
+  rbac:
+    - role: admin
+      uri_sans: ["spiffe://example.net/bgpls/admin/*"]
+    - role: reader
+      dns_sans: ["*.readers.example.net"]
+bgp:
+  router_id: 192.0.2.10
+  listen_port: 179
+retention:
+  duration: 720h
+  max_bytes: 53687091200
+domains:
+  - id: core
+    name: Core network
+peers:
+  - id: rr1
+    domain_id: core
+    name: Route reflector 1
+    remote_address: 192.0.2.1
+    local_as: 65000
+    remote_as: 65000
+    source_preference: 100
+    enabled: true

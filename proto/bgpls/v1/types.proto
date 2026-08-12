@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package bgpls.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bgpls/bgpls/gen/bgpls/v1;bgplsv1";
+
+enum Freshness {
+  FRESHNESS_UNSPECIFIED = 0;
+  FRESHNESS_ACTIVE = 1;
+  FRESHNESS_STALE_SOURCE_LOST = 2;
+  FRESHNESS_WITHDRAWN = 3;
+}
+
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_ISIS_LEVEL_1 = 1;
+  PROTOCOL_ISIS_LEVEL_2 = 2;
+  PROTOCOL_OSPFV2 = 3;
+  PROTOCOL_DIRECT = 4;
+  PROTOCOL_STATIC = 5;
+  PROTOCOL_OSPFV3 = 6;
+  PROTOCOL_BGP = 7;
+}
+
+enum PeerSessionState {
+  PEER_SESSION_STATE_UNSPECIFIED = 0;
+  PEER_SESSION_STATE_DISABLED = 1;
+  PEER_SESSION_STATE_IDLE = 2;
+  PEER_SESSION_STATE_CONNECT = 3;
+  PEER_SESSION_STATE_ACTIVE = 4;
+  PEER_SESSION_STATE_OPEN_SENT = 5;
+  PEER_SESSION_STATE_OPEN_CONFIRM = 6;
+  PEER_SESSION_STATE_ESTABLISHED = 7;
+}
+
+enum EntityKind {
+  ENTITY_KIND_UNSPECIFIED = 0;
+  ENTITY_KIND_NODE = 1;
+  ENTITY_KIND_LINK = 2;
+  ENTITY_KIND_PREFIX = 3;
+  ENTITY_KIND_PEER = 4;
+}
+
+// RawTlv contains the wire value of a TLV decoded by the configured BGP engine.
+// It is diagnostic data and is not a completeness guarantee for extensions.
+message RawTlv {
+  uint32 type = 1;
+  bytes value = 2;
+  string registry = 3;
+  uint32 enterprise_number = 4;
+}
+
+message Attribute {
+  string name = 1;
+  string value = 2;
+  string source_peer_id = 3;
+}
+
+message Conflict {
+  string field = 1;
+  string selected_value = 2;
+  string selected_peer_id = 3;
+  string rejected_value = 4;
+  string rejected_peer_id = 5;
+}
+
+message EntityMeta {
+  string id = 1;
+  string domain_id = 2;
+  uint64 revision = 3;
+  google.protobuf.Timestamp first_seen = 4;
+  google.protobuf.Timestamp last_seen = 5;
+  Freshness freshness = 6;
+  repeated string source_peer_ids = 7;
+  repeated Conflict conflicts = 8;
+  repeated RawTlv decoded_tlvs = 9;
+}
+
+message Domain {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  uint64 revision = 4;
+}
+
+message Node {
+  EntityMeta meta = 1;
+  Protocol protocol = 2;
+  uint32 autonomous_system = 3;
+  string area_id = 4;
+  string igp_router_id = 5;
+  string bgp_router_id = 6;
+  string name = 7;
+  bool pseudonode = 8;
+  repeated uint32 multi_topology_ids = 9;
+  repeated uint32 algorithms = 10;
+  repeated uint32 segment_routing_global_blocks = 11;
+  repeated Attribute attributes = 12;
+}
+
+message Link {
+  EntityMeta meta = 1;
+  string local_node_id = 2;
+  string remote_node_id = 3;
+  string local_address = 4;
+  string remote_address = 5;
+  uint64 local_link_id = 6;
+  uint64 remote_link_id = 7;
+  uint32 multi_topology_id = 8;
+  uint64 igp_metric = 9;
+  uint64 te_metric = 10;
+  uint64 delay_microseconds = 11;
+  double max_bandwidth_bytes_per_second = 12;
+  double reservable_bandwidth_bytes_per_second = 13;
+  repeated double unreserved_bandwidth_bytes_per_second = 14;
+  repeated uint32 admin_groups = 15;
+  repeated uint32 srlgs = 16;
+  repeated uint32 adjacency_sids = 17;
+  repeated Attribute attributes = 18;
+}
+
+message Prefix {
+  EntityMeta meta = 1;
+  string prefix = 2;
+  string origin_node_id = 3;
+  uint32 multi_topology_id = 4;
+  uint64 metric = 5;
+  repeated uint32 route_tags = 6;
+  string forwarding_address = 7;
+  uint32 prefix_sid = 8;
+  repeated Attribute attributes = 9;
+}
+
+message Peer {
+  string id = 1;
+  string domain_id = 2;
+  string name = 3;
+  string remote_address = 4;
+  string local_address = 5;
+  uint32 local_as = 6;
+  uint32 remote_as = 7;
+  uint32 source_preference = 8;
+  bool enabled = 9;
+  bool passive = 10;
+  bool ebgp_multihop = 11;
+  uint32 multihop_ttl = 12;
+  bool gtsm = 13;
+  string tcp_md5_secret = 14;
+  PeerSessionState session_state = 15;
+  string router_id = 16;
+  google.protobuf.Timestamp established_at = 17;
+  google.protobuf.Timestamp last_state_change = 18;
+  string last_error = 19;
+  uint64 received_updates = 20;
+  uint64 rejected_updates = 21;
+  uint64 resource_version = 22;
+  repeated string capabilities = 23;
+}
+
+message TopologyEvent {
+  uint64 revision = 1;
+  google.protobuf.Timestamp observed_at = 2;
+  EntityKind entity_kind = 3;
+  string entity_id = 4;
+  string domain_id = 5;
+  string operation = 6;
+  string source_peer_id = 7;
+  bytes before_json = 8;
+  bytes after_json = 9;
+  string reason = 10;
+}
+
+message Page {
+  uint32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResult {
+  string next_page_token = 1;
+  uint64 revision = 2;
+  google.protobuf.Timestamp observed_at = 3;
+}

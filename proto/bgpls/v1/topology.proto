@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package bgpls.v1;
+
+import "bgpls/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bgpls/bgpls/gen/bgpls/v1;bgplsv1";
+
+message TopologyFilter {
+  repeated string domain_ids = 1;
+  repeated Protocol protocols = 2;
+  repeated uint32 multi_topology_ids = 3;
+  repeated Freshness freshness = 4;
+  repeated string source_peer_ids = 5;
+  bool conflicts_only = 6;
+  string query = 7;
+}
+
+message GetSummaryRequest { TopologyFilter filter = 1; }
+message GetSummaryResponse {
+  uint64 revision = 1;
+  google.protobuf.Timestamp observed_at = 2;
+  uint64 domain_count = 3;
+  uint64 node_count = 4;
+  uint64 link_count = 5;
+  uint64 prefix_count = 6;
+  uint64 peer_count = 7;
+  uint64 conflict_count = 8;
+  uint64 stale_count = 9;
+}
+
+message ListDomainsRequest { Page page = 1; }
+message ListDomainsResponse { repeated Domain domains = 1; PageResult page = 2; }
+message GetNodeRequest { string id = 1; uint64 revision = 2; bool include_stale = 3; }
+message GetNodeResponse { Node node = 1; uint64 revision = 2; }
+message ListNodesRequest { TopologyFilter filter = 1; Page page = 2; uint64 revision = 3; }
+message ListNodesResponse { repeated Node nodes = 1; PageResult page = 2; }
+message GetNeighborsRequest { string node_id = 1; TopologyFilter filter = 2; uint64 revision = 3; }
+message GetNeighborsResponse { repeated Node nodes = 1; repeated Link links = 2; uint64 revision = 3; }
+message GetLinkRequest { string id = 1; uint64 revision = 2; bool include_stale = 3; }
+message GetLinkResponse { Link link = 1; uint64 revision = 2; }
+message ListLinksRequest { TopologyFilter filter = 1; Page page = 2; uint64 revision = 3; }
+message ListLinksResponse { repeated Link links = 1; PageResult page = 2; }
+message GetPrefixRequest { string id = 1; uint64 revision = 2; bool include_stale = 3; }
+message GetPrefixResponse { Prefix prefix = 1; uint64 revision = 2; }
+message ListPrefixesRequest { TopologyFilter filter = 1; Page page = 2; uint64 revision = 3; }
+message ListPrefixesResponse { repeated Prefix prefixes = 1; PageResult page = 2; }
+message ResolveRequest { string query = 1; string domain_id = 2; uint32 limit = 3; }
+message ResolveResponse { repeated Node nodes = 1; repeated Link links = 2; repeated Prefix prefixes = 3; uint64 revision = 4; }
+message WatchTopologyRequest { TopologyFilter filter = 1; uint64 after_revision = 2; }
+message WatchTopologyResponse { TopologyEvent event = 1; }
+message StreamSnapshotRequest { TopologyFilter filter = 1; uint64 revision = 2; }
+message StreamSnapshotResponse { uint64 revision = 1; repeated Domain domains = 2; repeated Node nodes = 3; repeated Link links = 4; repeated Prefix prefixes = 5; bool last = 6; }
+
+enum PathMetric {
+  PATH_METRIC_UNSPECIFIED = 0;
+  PATH_METRIC_IGP = 1;
+  PATH_METRIC_TE = 2;
+  PATH_METRIC_DELAY = 3;
+}
+
+message PathConstraints {
+  uint32 multi_topology_id = 1;
+  double minimum_reservable_bandwidth_bytes_per_second = 2;
+  repeated uint32 require_admin_groups = 3;
+  repeated uint32 exclude_admin_groups = 4;
+  repeated string include_node_ids = 5;
+  repeated string avoid_node_ids = 6;
+  repeated string avoid_link_ids = 7;
+}
+
+message ComputePathsRequest {
+  string domain_id = 1;
+  string source = 2;
+  string destination = 3;
+  PathMetric metric = 4;
+  PathConstraints constraints = 5;
+  uint32 max_paths = 6;
+  uint64 revision = 7;
+}
+message PathHop { uint32 index = 1; Node node = 2; Link outgoing_link = 3; }
+message ComputedPath { repeated PathHop hops = 1; uint64 total_metric = 2; uint64 total_delay_microseconds = 3; double bottleneck_bandwidth_bytes_per_second = 4; }
+message ComputePathsResponse { repeated ComputedPath paths = 1; uint64 revision = 2; string explanation = 3; }
+
+message AnalyzeImpactRequest {
+  string domain_id = 1;
+  repeated string failed_node_ids = 2;
+  repeated string failed_link_ids = 3;
+  uint64 revision = 4;
+}
+message AnalyzeImpactResponse {
+  uint64 revision = 1;
+  repeated string unreachable_node_ids = 2;
+  repeated string unreachable_prefix_ids = 3;
+  repeated ImpactComponent disconnected_components = 4;
+}
+message ImpactComponent { repeated string node_ids = 1; }
+
+message ListChangesRequest { uint64 after_revision = 1; uint64 before_revision = 2; TopologyFilter filter = 3; Page page = 4; }
+message ListChangesResponse { repeated TopologyEvent events = 1; PageResult page = 2; uint64 oldest_available_revision = 3; }
+message DiffTopologyRequest { uint64 from_revision = 1; uint64 to_revision = 2; TopologyFilter filter = 3; }
+message DiffTopologyResponse { repeated TopologyEvent changes = 1; uint64 from_revision = 2; uint64 to_revision = 3; }
+
+service TopologyService {
+  rpc GetSummary(GetSummaryRequest) returns (GetSummaryResponse);
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse);
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+  rpc GetNeighbors(GetNeighborsRequest) returns (GetNeighborsResponse);
+  rpc GetLink(GetLinkRequest) returns (GetLinkResponse);
+  rpc ListLinks(ListLinksRequest) returns (ListLinksResponse);
+  rpc GetPrefix(GetPrefixRequest) returns (GetPrefixResponse);
+  rpc ListPrefixes(ListPrefixesRequest) returns (ListPrefixesResponse);
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+  rpc StreamSnapshot(StreamSnapshotRequest) returns (stream StreamSnapshotResponse);
+  rpc WatchTopology(WatchTopologyRequest) returns (stream WatchTopologyResponse);
+}
+
+service PathService {
+  rpc ComputePaths(ComputePathsRequest) returns (ComputePathsResponse);
+  rpc AnalyzeImpact(AnalyzeImpactRequest) returns (AnalyzeImpactResponse);
+}
+
+service HistoryService {
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+  rpc DiffTopology(DiffTopologyRequest) returns (DiffTopologyResponse);
+}

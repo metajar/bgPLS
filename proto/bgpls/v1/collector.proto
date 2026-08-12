@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package bgpls.v1;
+
+import "bgpls/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bgpls/bgpls/gen/bgpls/v1;bgplsv1";
+
+message GetStatusRequest {}
+message GetStatusResponse {
+  string version = 1;
+  google.protobuf.Timestamp started_at = 2;
+  uint64 topology_revision = 3;
+  uint64 storage_bytes = 4;
+  bool ready = 5;
+  string message = 6;
+}
+message GetPeerRequest { string id = 1; }
+message GetPeerResponse { Peer peer = 1; }
+message ListPeersRequest { string domain_id = 1; Page page = 2; }
+message ListPeersResponse { repeated Peer peers = 1; PageResult page = 2; }
+message CreatePeerRequest { Peer peer = 1; }
+message CreatePeerResponse { Peer peer = 1; }
+message UpdatePeerRequest { Peer peer = 1; uint64 expected_resource_version = 2; }
+message UpdatePeerResponse { Peer peer = 1; }
+message DeletePeerRequest { string id = 1; uint64 expected_resource_version = 2; }
+message DeletePeerResponse {}
+message SetPeerAdminStateRequest { string id = 1; bool enabled = 2; uint64 expected_resource_version = 3; }
+message SetPeerAdminStateResponse { Peer peer = 1; }
+message ResetPeerRequest { string id = 1; bool soft = 2; }
+message ResetPeerResponse { Peer peer = 1; }
+message ValidatePeerConfigRequest { Peer peer = 1; }
+message ValidatePeerConfigResponse { bool valid = 1; repeated string errors = 2; repeated string warnings = 3; }
+message ExportPeerConfigRequest {}
+message ExportPeerConfigResponse { bytes yaml = 1; }
+message ImportPeerConfigRequest { bytes yaml = 1; bool replace = 2; }
+message ImportPeerConfigResponse { repeated Peer peers = 1; }
+
+service CollectorService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetPeer(GetPeerRequest) returns (GetPeerResponse);
+  rpc ListPeers(ListPeersRequest) returns (ListPeersResponse);
+  rpc CreatePeer(CreatePeerRequest) returns (CreatePeerResponse);
+  rpc UpdatePeer(UpdatePeerRequest) returns (UpdatePeerResponse);
+  rpc DeletePeer(DeletePeerRequest) returns (DeletePeerResponse);
+  rpc SetPeerAdminState(SetPeerAdminStateRequest) returns (SetPeerAdminStateResponse);
+  rpc ResetPeer(ResetPeerRequest) returns (ResetPeerResponse);
+  rpc ValidatePeerConfig(ValidatePeerConfigRequest) returns (ValidatePeerConfigResponse);
+  rpc ExportPeerConfig(ExportPeerConfigRequest) returns (ExportPeerConfigResponse);
+  rpc ImportPeerConfig(ImportPeerConfigRequest) returns (ImportPeerConfigResponse);
+}
