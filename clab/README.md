@@ -27,15 +27,15 @@ That builds the collector image, mints lab mTLS certificates, deploys eight FRR 
 
 ## Query the API
 
-`make clab` copies a `./bgpls` CLI onto the lab host. Use the wrapper so certificates are passed automatically:
+`make clab` copies a `./bgpls` CLI onto the lab host. From the repository root it loads `clab/pki` automatically:
 
 ```sh
-./clab/scripts/bgpls.sh topology summary
-./clab/scripts/bgpls.sh topology nodes --domain core
-./clab/scripts/bgpls.sh topology links --domain core
-./clab/scripts/bgpls.sh topology prefixes --domain core
-./clab/scripts/bgpls.sh path compute --domain core --source r1 --destination r8 --metric igp
-./clab/scripts/bgpls.sh peers list
+./bgpls topology summary
+./bgpls topology nodes --domain core
+./bgpls topology links --domain core
+./bgpls topology prefixes --domain core
+./bgpls path compute --domain core --source r1 --destination r8 --metric igp
+./bgpls peers list
 ```
 
 If node names have not appeared yet, use loopback addresses:

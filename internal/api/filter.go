@@ -85,7 +85,7 @@ func nodeMatch(n *bgplsv1.Node, f *bgplsv1.TopologyFilter) bool {
 		}
 	}
 	q := strings.ToLower(f.Query)
-	return q == "" || strings.Contains(strings.ToLower(m.Id), q) || strings.Contains(strings.ToLower(n.Name), q) || strings.Contains(strings.ToLower(n.IgpRouterId), q) || strings.Contains(strings.ToLower(n.BgpRouterId), q)
+	return q == "" || strings.Contains(strings.ToLower(m.Id), q) || strings.Contains(strings.ToLower(n.Name), q) || strings.Contains(strings.ToLower(n.IgpRouterId), q) || strings.Contains(strings.ToLower(n.BgpRouterId), q) || strings.Contains(strings.ToLower(n.Ipv4RouterId), q) || strings.Contains(strings.ToLower(n.Ipv6RouterId), q)
 }
 func linkMatch(l *bgplsv1.Link, f *bgplsv1.TopologyFilter) bool {
 	if f == nil {

@@ -192,7 +192,46 @@ func addClientFlags(fs *flag.FlagSet) *clientFlags {
 	fs.StringVar(&c.key, "key", "", "client private key PEM")
 	return c
 }
+
+func fileExists(path string) bool {
+	st, err := os.Stat(path)
+	return err == nil && !st.IsDir()
+}
+
+func (c *clientFlags) applyLabDefaults() {
+	if c.ca == "" {
+		if v := os.Getenv("BGPLS_CA"); v != "" {
+			c.ca = v
+		}
+	}
+	if c.cert == "" {
+		if v := os.Getenv("BGPLS_CERT"); v != "" {
+			c.cert = v
+		}
+	}
+	if c.key == "" {
+		if v := os.Getenv("BGPLS_KEY"); v != "" {
+			c.key = v
+		}
+	}
+	if c.ca != "" || c.cert != "" || c.key != "" {
+		return
+	}
+	role := os.Getenv("BGPLS_ROLE")
+	if role == "" {
+		role = "admin"
+	}
+	for _, base := range []string{"clab/pki", filepath.Join("clab", "pki")} {
+		ca, cert, key := filepath.Join(base, "ca.crt"), filepath.Join(base, role+".crt"), filepath.Join(base, role+".key")
+		if fileExists(ca) && fileExists(cert) && fileExists(key) {
+			c.ca, c.cert, c.key = ca, cert, key
+			return
+		}
+	}
+}
+
 func (c clientFlags) httpClient() (*http.Client, error) {
+	c.applyLabDefaults()
 	pool, err := x509.SystemCertPool()
 	if err != nil {
 		return nil, err

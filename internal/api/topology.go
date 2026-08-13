@@ -252,7 +252,7 @@ func (s *TopologyService) Resolve(_ context.Context, req *connect.Request[bgplsv
 		if req.Msg.DomainId != "" && n.GetMeta().DomainId != req.Msg.DomainId {
 			continue
 		}
-		if strings.Contains(strings.ToLower(n.GetMeta().Id), q) || strings.Contains(strings.ToLower(n.Name), q) || strings.Contains(strings.ToLower(n.IgpRouterId), q) || strings.Contains(strings.ToLower(n.BgpRouterId), q) {
+		if strings.Contains(strings.ToLower(n.GetMeta().Id), q) || strings.Contains(strings.ToLower(n.Name), q) || strings.Contains(strings.ToLower(n.IgpRouterId), q) || strings.Contains(strings.ToLower(n.BgpRouterId), q) || strings.Contains(strings.ToLower(n.Ipv4RouterId), q) || strings.Contains(strings.ToLower(n.Ipv6RouterId), q) {
 			out.Nodes = append(out.Nodes, n)
 			if len(out.Nodes) >= limit {
 				break
@@ -373,7 +373,7 @@ func resolveNodeID(snap store.Snapshot, domain, q string) string {
 		if n.GetMeta().DomainId != domain {
 			continue
 		}
-		if n.GetMeta().Id == q || n.Name == q || n.IgpRouterId == q || n.BgpRouterId == q {
+		if n.GetMeta().Id == q || n.Name == q || n.IgpRouterId == q || n.BgpRouterId == q || n.Ipv4RouterId == q || n.Ipv6RouterId == q {
 			return n.GetMeta().Id
 		}
 	}

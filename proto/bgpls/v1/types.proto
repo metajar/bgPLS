@@ -43,11 +43,12 @@ enum EntityKind {
   ENTITY_KIND_PEER = 4;
 }
 
-// RawTlv contains the wire value of a TLV decoded by the configured BGP engine.
+// RawTlv is a best-effort decoded BGP-LS attribute TLV.
+// Value is human-readable when the type is known, otherwise lowercase hex.
 // It is diagnostic data and is not a completeness guarantee for extensions.
 message RawTlv {
   uint32 type = 1;
-  bytes value = 2;
+  string value = 2;
   string registry = 3;
   uint32 enterprise_number = 4;
 }
@@ -98,6 +99,8 @@ message Node {
   repeated uint32 algorithms = 10;
   repeated uint32 segment_routing_global_blocks = 11;
   repeated Attribute attributes = 12;
+  string ipv4_router_id = 13;
+  string ipv6_router_id = 14;
 }
 
 message Link {

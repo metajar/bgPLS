@@ -257,12 +257,13 @@ func (EntityKind) EnumDescriptor() ([]byte, []int) {
 	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{3}
 }
 
-// RawTlv contains the wire value of a TLV decoded by the configured BGP engine.
+// RawTlv is a best-effort decoded BGP-LS attribute TLV.
+// Value is human-readable when the type is known, otherwise lowercase hex.
 // It is diagnostic data and is not a completeness guarantee for extensions.
 type RawTlv struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Type             uint32                 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
-	Value            []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Value            string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Registry         string                 `protobuf:"bytes,3,opt,name=registry,proto3" json:"registry,omitempty"`
 	EnterpriseNumber uint32                 `protobuf:"varint,4,opt,name=enterprise_number,json=enterpriseNumber,proto3" json:"enterprise_number,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -306,11 +307,11 @@ func (x *RawTlv) GetType() uint32 {
 	return 0
 }
 
-func (x *RawTlv) GetValue() []byte {
+func (x *RawTlv) GetValue() string {
 	if x != nil {
 		return x.Value
 	}
-	return nil
+	return ""
 }
 
 func (x *RawTlv) GetRegistry() string {
@@ -653,6 +654,8 @@ type Node struct {
 	Algorithms                 []uint32               `protobuf:"varint,10,rep,packed,name=algorithms,proto3" json:"algorithms,omitempty"`
 	SegmentRoutingGlobalBlocks []uint32               `protobuf:"varint,11,rep,packed,name=segment_routing_global_blocks,json=segmentRoutingGlobalBlocks,proto3" json:"segment_routing_global_blocks,omitempty"`
 	Attributes                 []*Attribute           `protobuf:"bytes,12,rep,name=attributes,proto3" json:"attributes,omitempty"`
+	Ipv4RouterId               string                 `protobuf:"bytes,13,opt,name=ipv4_router_id,json=ipv4RouterId,proto3" json:"ipv4_router_id,omitempty"`
+	Ipv6RouterId               string                 `protobuf:"bytes,14,opt,name=ipv6_router_id,json=ipv6RouterId,proto3" json:"ipv6_router_id,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -769,6 +772,20 @@ func (x *Node) GetAttributes() []*Attribute {
 		return x.Attributes
 	}
 	return nil
+}
+
+func (x *Node) GetIpv4RouterId() string {
+	if x != nil {
+		return x.Ipv4RouterId
+	}
+	return ""
+}
+
+func (x *Node) GetIpv6RouterId() string {
+	if x != nil {
+		return x.Ipv6RouterId
+	}
+	return ""
 }
 
 type Link struct {
@@ -1514,7 +1531,7 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"\x14bgpls/v1/types.proto\x12\bbgpls.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"{\n" +
 	"\x06RawTlv\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\rR\x04type\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value\x12\x1a\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1a\n" +
 	"\bregistry\x18\x03 \x01(\tR\bregistry\x12+\n" +
 	"\x11enterprise_number\x18\x04 \x01(\rR\x10enterpriseNumber\"[\n" +
 	"\tAttribute\x12\x12\n" +
@@ -1543,7 +1560,7 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
-	"\brevision\x18\x04 \x01(\x04R\brevision\"\xe8\x03\n" +
+	"\brevision\x18\x04 \x01(\x04R\brevision\"\xb4\x04\n" +
 	"\x04Node\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12.\n" +
 	"\bprotocol\x18\x02 \x01(\x0e2\x12.bgpls.v1.ProtocolR\bprotocol\x12+\n" +
@@ -1563,7 +1580,9 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"\x1dsegment_routing_global_blocks\x18\v \x03(\rR\x1asegmentRoutingGlobalBlocks\x123\n" +
 	"\n" +
 	"attributes\x18\f \x03(\v2\x13.bgpls.v1.AttributeR\n" +
-	"attributes\"\xa4\x06\n" +
+	"attributes\x12$\n" +
+	"\x0eipv4_router_id\x18\r \x01(\tR\fipv4RouterId\x12$\n" +
+	"\x0eipv6_router_id\x18\x0e \x01(\tR\fipv6RouterId\"\xa4\x06\n" +
 	"\x04Link\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12\"\n" +
 	"\rlocal_node_id\x18\x02 \x01(\tR\vlocalNodeId\x12$\n" +

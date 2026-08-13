@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	bgplsv1 "github.com/bgpls/bgpls/gen/bgpls/v1"
 	"github.com/bgpls/bgpls/internal/config"
@@ -173,7 +176,7 @@ func (c *Collector) handlePeer(event *apiutil.WatchEventMessage_PeerEvent, obser
 		return
 	}
 	p.SessionState = mapFSM(event.Peer.State.SessionState)
-	p.RouterId = event.Peer.State.RouterID.String()
+	p.RouterId = formatAddr(event.Peer.State.RouterID)
 	p.LastStateChange = timestamppb.New(observed)
 	p.LastError = event.Peer.State.DisconnectMessage
 	if p.SessionState == bgplsv1.PeerSessionState_PEER_SESSION_STATE_ESTABLISHED {
@@ -392,14 +395,16 @@ func stableID(parts ...string) string {
 	return hex.EncodeToString(sum[:16])
 }
 func nodeID(domain string, protocol packet.LsProtocolID, identifier uint64, d *packet.LsNodeDescriptor) string {
-	return stableID("node", domain, fmt.Sprint(protocol), fmt.Sprint(identifier), fmt.Sprint(d.Asn), fmt.Sprint(d.BGPLsID), fmt.Sprint(d.OspfAreaID), d.IGPRouterID, d.BGPRouterID.String(), fmt.Sprint(d.BGPConfederationMember))
+	return stableID("node", domain, fmt.Sprint(protocol), fmt.Sprint(identifier), fmt.Sprint(d.Asn), fmt.Sprint(d.BGPLsID), fmt.Sprint(d.OspfAreaID), d.IGPRouterID, formatAddr(d.BGPRouterID), fmt.Sprint(d.BGPConfederationMember))
 }
 func nodeFrom(d *packet.LsNodeDescriptor, id, domain string, protocol bgplsv1.Protocol, attrs *packet.LsAttribute, raw []*bgplsv1.RawTlv) *bgplsv1.Node {
-	n := &bgplsv1.Node{Meta: &bgplsv1.EntityMeta{Id: id, DomainId: domain, Freshness: bgplsv1.Freshness_FRESHNESS_ACTIVE, DecodedTlvs: raw}, Protocol: protocol, AutonomousSystem: d.Asn, AreaId: fmt.Sprintf("%08x", d.OspfAreaID), IgpRouterId: d.IGPRouterID, BgpRouterId: d.BGPRouterID.String(), Pseudonode: d.PseudoNode}
+	n := &bgplsv1.Node{Meta: &bgplsv1.EntityMeta{Id: id, DomainId: domain, Freshness: bgplsv1.Freshness_FRESHNESS_ACTIVE, DecodedTlvs: raw}, Protocol: protocol, AutonomousSystem: d.Asn, AreaId: areaID(protocol, d, attrs), IgpRouterId: d.IGPRouterID, BgpRouterId: formatAddr(d.BGPRouterID), Pseudonode: d.PseudoNode}
 	if attrs != nil {
 		if attrs.Node.Name != nil {
 			n.Name = *attrs.Node.Name
 		}
+		n.Ipv4RouterId = formatAddrPtr(attrs.Node.LocalRouterID)
+		n.Ipv6RouterId = formatAddrPtr(attrs.Node.LocalRouterIDv6)
 		if attrs.Node.SrAlgorithms != nil {
 			for _, v := range *attrs.Node.SrAlgorithms {
 				n.Algorithms = append(n.Algorithms, uint32(v))
@@ -489,13 +494,85 @@ func decodedAttributeTLVs(attrs []packet.PathAttributeInterface) []*bgplsv1.RawT
 			continue
 		}
 		for _, tlv := range ls.TLVs {
-			wire, err := tlv.Serialize()
-			if err != nil || len(wire) < 4 {
-				continue
-			}
 			header := tlv.GetLsTLV()
-			out = append(out, &bgplsv1.RawTlv{Type: uint32(header.Type), Value: append([]byte(nil), wire[4:]...), Registry: "bgp-ls-attribute"})
+			var payload []byte
+			if wire, err := tlv.Serialize(); err == nil && len(wire) >= 4 {
+				payload = wire[4:]
+			}
+			out = append(out, &bgplsv1.RawTlv{Type: uint32(header.Type), Value: tlvText(tlv, payload), Registry: "bgp-ls-attribute"})
 		}
 	}
 	return out
+}
+
+func formatAddr(addr netip.Addr) string {
+	if !addr.IsValid() {
+		return ""
+	}
+	return addr.String()
+}
+
+func formatAddrPtr(addr *netip.Addr) string {
+	if addr == nil {
+		return ""
+	}
+	return formatAddr(*addr)
+}
+
+func areaID(protocol bgplsv1.Protocol, d *packet.LsNodeDescriptor, attrs *packet.LsAttribute) string {
+	switch protocol {
+	case bgplsv1.Protocol_PROTOCOL_OSPFV2, bgplsv1.Protocol_PROTOCOL_OSPFV3:
+		return fmt.Sprintf("%08x", d.OspfAreaID)
+	case bgplsv1.Protocol_PROTOCOL_ISIS_LEVEL_1, bgplsv1.Protocol_PROTOCOL_ISIS_LEVEL_2:
+		if attrs != nil && attrs.Node.IsisArea != nil {
+			return formatISISArea(*attrs.Node.IsisArea)
+		}
+	}
+	return ""
+}
+
+func formatISISArea(area []byte) string {
+	if len(area) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, (len(area)+1)/2)
+	parts = append(parts, fmt.Sprintf("%02x", area[0]))
+	for i := 1; i < len(area); i += 2 {
+		if i+1 < len(area) {
+			parts = append(parts, fmt.Sprintf("%02x%02x", area[i], area[i+1]))
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%02x", area[i]))
+	}
+	return strings.Join(parts, ".")
+}
+
+func tlvText(tlv packet.LsTLVInterface, value []byte) string {
+	switch v := tlv.(type) {
+	case *packet.LsTLVNodeName:
+		return v.Name
+	case *packet.LsTLVIsisArea:
+		return formatISISArea(v.Area)
+	case *packet.LsTLVLocalIPv4RouterID:
+		return formatAddr(v.IP)
+	case *packet.LsTLVLocalIPv6RouterID:
+		return formatAddr(v.IP)
+	case *packet.LsTLVRemoteIPv4RouterID:
+		return formatAddr(v.IP)
+	case *packet.LsTLVRemoteIPv6RouterID:
+		return formatAddr(v.IP)
+	}
+	if len(value) > 0 && utf8.Valid(value) && isPrintableASCII(value) {
+		return string(value)
+	}
+	return hex.EncodeToString(value)
+}
+
+func isPrintableASCII(value []byte) bool {
+	for _, b := range value {
+		if b > unicode.MaxASCII || !unicode.IsPrint(rune(b)) {
+			return false
+		}
+	}
+	return true
 }

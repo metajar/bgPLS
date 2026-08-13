@@ -113,6 +113,9 @@ func mergeEntity(selected, other proto.Message, selectedPeer, otherPeer string) 
 		mergeString("name", &a.Name, b.Name, a.Meta, selectedPeer, otherPeer)
 		mergeString("igp_router_id", &a.IgpRouterId, b.IgpRouterId, a.Meta, selectedPeer, otherPeer)
 		mergeString("bgp_router_id", &a.BgpRouterId, b.BgpRouterId, a.Meta, selectedPeer, otherPeer)
+		mergeString("ipv4_router_id", &a.Ipv4RouterId, b.Ipv4RouterId, a.Meta, selectedPeer, otherPeer)
+		mergeString("ipv6_router_id", &a.Ipv6RouterId, b.Ipv6RouterId, a.Meta, selectedPeer, otherPeer)
+		mergeString("area_id", &a.AreaId, b.AreaId, a.Meta, selectedPeer, otherPeer)
 		a.Meta.DecodedTlvs = mergeTLVs(a.Meta.DecodedTlvs, b.GetMeta().GetDecodedTlvs())
 	case *bgplsv1.Link:
 		b, ok := other.(*bgplsv1.Link)
@@ -162,10 +165,10 @@ func mergeUint64(field string, selected *uint64, other uint64, meta *bgplsv1.Ent
 func mergeTLVs(selected, other []*bgplsv1.RawTlv) []*bgplsv1.RawTlv {
 	seen := map[string]bool{}
 	for _, v := range selected {
-		seen[fmt.Sprintf("%s/%d/%x", v.Registry, v.Type, v.Value)] = true
+		seen[fmt.Sprintf("%s/%d/%s", v.Registry, v.Type, v.Value)] = true
 	}
 	for _, v := range other {
-		key := fmt.Sprintf("%s/%d/%x", v.Registry, v.Type, v.Value)
+		key := fmt.Sprintf("%s/%d/%s", v.Registry, v.Type, v.Value)
 		if !seen[key] {
 			selected = append(selected, proto.Clone(v).(*bgplsv1.RawTlv))
 			seen[key] = true

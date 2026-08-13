@@ -24,6 +24,64 @@ func TestStableNodeTranslation(t *testing.T) {
 	if node.Name != "r1" || len(node.Algorithms) != 2 || node.AutonomousSystem != 65000 {
 		t.Fatalf("unexpected node translation: %+v", node)
 	}
+	if node.BgpRouterId != "" {
+		t.Fatalf("unset BGP router ID should be empty, got %q", node.BgpRouterId)
+	}
+	if node.AreaId != "00000001" {
+		t.Fatalf("OSPF area ID = %q", node.AreaId)
+	}
+}
+
+func TestISISNodeTranslationUsesAttributeRouterIDs(t *testing.T) {
+	descriptor := &packet.LsNodeDescriptor{IGPRouterID: "0000.0000.0001"}
+	name := "r1"
+	area := []byte{0x49, 0x00, 0x01}
+	ipv4 := netip.MustParseAddr("10.255.0.1")
+	ipv6 := netip.MustParseAddr("fd00:2:55::1")
+	node := nodeFrom(descriptor, "n", "core", bgplsv1.Protocol_PROTOCOL_ISIS_LEVEL_2, &packet.LsAttribute{Node: packet.LsAttributeNode{Name: &name, IsisArea: &area, LocalRouterID: &ipv4, LocalRouterIDv6: &ipv6}}, nil)
+	if node.BgpRouterId != "" {
+		t.Fatalf("ISIS BGP router ID should be empty, got %q", node.BgpRouterId)
+	}
+	if node.AreaId != "49.0001" || node.Ipv4RouterId != "10.255.0.1" || node.Ipv6RouterId != "fd00:2:55::1" {
+		t.Fatalf("unexpected ISIS node translation: %+v", node)
+	}
+}
+
+func TestDecodedAttributeTLVsAreHumanReadable(t *testing.T) {
+	name := "r1"
+	area := []byte{0x49, 0x00, 0x01}
+	ipv4 := netip.MustParseAddr("10.255.0.1")
+	ipv6 := netip.MustParseAddr("fd00:2:55::1")
+	decoded := decodedAttributeTLVs([]packet.PathAttributeInterface{&packet.PathAttributeLs{TLVs: []packet.LsTLVInterface{
+		packet.NewLsTLVNodeName(&name),
+		packet.NewLsTLVIsisArea(&area),
+		packet.NewLsTLVLocalIPv4RouterID(&ipv4),
+		packet.NewLsTLVLocalIPv6RouterID(&ipv6),
+	}}})
+	got := map[uint32]string{}
+	for _, tlv := range decoded {
+		got[tlv.Type] = tlv.Value
+	}
+	want := map[uint32]string{1026: "r1", 1027: "49.0001", 1028: "10.255.0.1", 1029: "fd00:2:55::1"}
+	for typ, value := range want {
+		if got[typ] != value {
+			t.Fatalf("TLV %d = %q, want %q", typ, got[typ], value)
+		}
+	}
+}
+
+func TestFormatAddrOmitsInvalidIP(t *testing.T) {
+	if got := formatAddr(netip.Addr{}); got != "" {
+		t.Fatalf("zero address = %q", got)
+	}
+	if got := formatAddr(netip.MustParseAddr("192.0.2.1")); got != "192.0.2.1" {
+		t.Fatalf("valid address = %q", got)
+	}
+	descriptor := &packet.LsNodeDescriptor{BGPRouterID: netip.MustParseAddr("192.0.2.10")}
+	node := nodeFrom(descriptor, "n", "core", bgplsv1.Protocol_PROTOCOL_BGP, nil, nil)
+	if node.BgpRouterId != "192.0.2.10" {
+		t.Fatalf("BGP router ID = %q", node.BgpRouterId)
+	}
 }
 
 func TestMalformedDecodedPathReturnsError(t *testing.T) {
