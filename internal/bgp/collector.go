@@ -421,18 +421,12 @@ func linkFrom(id, domain, local, remote string, d *packet.LsLinkDescriptor, attr
 	if d.LinkRemoteID != nil {
 		l.RemoteLinkId = uint64(*d.LinkRemoteID)
 	}
-	if d.InterfaceAddrIPv4 != nil {
-		l.LocalAddress = d.InterfaceAddrIPv4.String()
-	}
-	if d.InterfaceAddrIPv6 != nil {
-		l.LocalAddress = d.InterfaceAddrIPv6.String()
-	}
-	if d.NeighborAddrIPv4 != nil {
-		l.RemoteAddress = d.NeighborAddrIPv4.String()
-	}
-	if d.NeighborAddrIPv6 != nil {
-		l.RemoteAddress = d.NeighborAddrIPv6.String()
-	}
+	l.LocalIpv4Address = formatAddrPtr(d.InterfaceAddrIPv4)
+	l.RemoteIpv4Address = formatAddrPtr(d.NeighborAddrIPv4)
+	l.LocalIpv6Address = formatAddrPtr(d.InterfaceAddrIPv6)
+	l.RemoteIpv6Address = formatAddrPtr(d.NeighborAddrIPv6)
+	l.LocalAddress = firstNonEmpty(l.LocalIpv4Address, l.LocalIpv6Address)
+	l.RemoteAddress = firstNonEmpty(l.RemoteIpv4Address, l.RemoteIpv6Address)
 	if attrs != nil {
 		a := attrs.Link
 		if a.IGPMetric != nil {
@@ -517,6 +511,15 @@ func formatAddrPtr(addr *netip.Addr) string {
 		return ""
 	}
 	return formatAddr(*addr)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func areaID(protocol bgplsv1.Protocol, d *packet.LsNodeDescriptor, attrs *packet.LsAttribute) string {

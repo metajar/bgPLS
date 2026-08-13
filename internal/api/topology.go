@@ -263,7 +263,7 @@ func (s *TopologyService) Resolve(_ context.Context, req *connect.Request[bgplsv
 		if req.Msg.DomainId != "" && l.GetMeta().DomainId != req.Msg.DomainId {
 			continue
 		}
-		if strings.Contains(strings.ToLower(l.GetMeta().Id), q) || l.LocalAddress == req.Msg.Query || l.RemoteAddress == req.Msg.Query {
+		if strings.Contains(strings.ToLower(l.GetMeta().Id), q) || l.LocalAddress == req.Msg.Query || l.RemoteAddress == req.Msg.Query || l.LocalIpv4Address == req.Msg.Query || l.RemoteIpv4Address == req.Msg.Query || l.LocalIpv6Address == req.Msg.Query || l.RemoteIpv6Address == req.Msg.Query {
 			out.Links = append(out.Links, l)
 			if len(out.Links) >= limit {
 				break

@@ -131,4 +131,24 @@ func TestLinkTETranslation(t *testing.T) {
 	if link.IgpMetric != 10 || link.TeMetric != 20 || link.DelayMicroseconds != 30 || link.ReservableBandwidthBytesPerSecond != 1000 {
 		t.Fatalf("unexpected link translation: %+v", link)
 	}
+	if link.LocalIpv4Address != "192.0.2.1" || link.RemoteIpv4Address != "192.0.2.2" || link.LocalAddress != "192.0.2.1" {
+		t.Fatalf("unexpected IPv4 link addresses: %+v", link)
+	}
+}
+
+func TestLinkDualStackAddresses(t *testing.T) {
+	localAddr := netip.MustParseAddr("10.1.13.2")
+	remoteAddr := netip.MustParseAddr("10.1.13.1")
+	localV6 := netip.MustParseAddr("fd00:1:13::2")
+	remoteV6 := netip.MustParseAddr("fd00:1:13::1")
+	link := linkFrom("l", "core", "a", "b", &packet.LsLinkDescriptor{InterfaceAddrIPv4: &localAddr, NeighborAddrIPv4: &remoteAddr, InterfaceAddrIPv6: &localV6, NeighborAddrIPv6: &remoteV6}, nil, nil)
+	if link.LocalIpv4Address != "10.1.13.2" || link.RemoteIpv4Address != "10.1.13.1" {
+		t.Fatalf("IPv4 addresses were lost: %+v", link)
+	}
+	if link.LocalIpv6Address != "fd00:1:13::2" || link.RemoteIpv6Address != "fd00:1:13::1" {
+		t.Fatalf("IPv6 addresses were lost: %+v", link)
+	}
+	if link.LocalAddress != "10.1.13.2" || link.RemoteAddress != "10.1.13.1" {
+		t.Fatalf("legacy address fields should prefer IPv4: %+v", link)
+	}
 }

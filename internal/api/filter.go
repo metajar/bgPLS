@@ -110,7 +110,7 @@ func linkMatch(l *bgplsv1.Link, f *bgplsv1.TopologyFilter) bool {
 		}
 	}
 	q := strings.ToLower(f.Query)
-	return q == "" || strings.Contains(strings.ToLower(m.Id), q) || strings.Contains(strings.ToLower(l.LocalAddress), q) || strings.Contains(strings.ToLower(l.RemoteAddress), q)
+	return q == "" || strings.Contains(strings.ToLower(m.Id), q) || strings.Contains(strings.ToLower(l.LocalAddress), q) || strings.Contains(strings.ToLower(l.RemoteAddress), q) || strings.Contains(strings.ToLower(l.LocalIpv4Address), q) || strings.Contains(strings.ToLower(l.RemoteIpv4Address), q) || strings.Contains(strings.ToLower(l.LocalIpv6Address), q) || strings.Contains(strings.ToLower(l.RemoteIpv6Address), q)
 }
 func prefixMatch(p *bgplsv1.Prefix, f *bgplsv1.TopologyFilter) bool {
 	if f == nil {

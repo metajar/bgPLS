@@ -122,6 +122,10 @@ message Link {
   repeated uint32 srlgs = 16;
   repeated uint32 adjacency_sids = 17;
   repeated Attribute attributes = 18;
+  string local_ipv4_address = 19;
+  string remote_ipv4_address = 20;
+  string local_ipv6_address = 21;
+  string remote_ipv6_address = 22;
 }
 
 message Prefix {

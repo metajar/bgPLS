@@ -808,6 +808,10 @@ type Link struct {
 	Srlgs                             []uint32               `protobuf:"varint,16,rep,packed,name=srlgs,proto3" json:"srlgs,omitempty"`
 	AdjacencySids                     []uint32               `protobuf:"varint,17,rep,packed,name=adjacency_sids,json=adjacencySids,proto3" json:"adjacency_sids,omitempty"`
 	Attributes                        []*Attribute           `protobuf:"bytes,18,rep,name=attributes,proto3" json:"attributes,omitempty"`
+	LocalIpv4Address                  string                 `protobuf:"bytes,19,opt,name=local_ipv4_address,json=localIpv4Address,proto3" json:"local_ipv4_address,omitempty"`
+	RemoteIpv4Address                 string                 `protobuf:"bytes,20,opt,name=remote_ipv4_address,json=remoteIpv4Address,proto3" json:"remote_ipv4_address,omitempty"`
+	LocalIpv6Address                  string                 `protobuf:"bytes,21,opt,name=local_ipv6_address,json=localIpv6Address,proto3" json:"local_ipv6_address,omitempty"`
+	RemoteIpv6Address                 string                 `protobuf:"bytes,22,opt,name=remote_ipv6_address,json=remoteIpv6Address,proto3" json:"remote_ipv6_address,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -966,6 +970,34 @@ func (x *Link) GetAttributes() []*Attribute {
 		return x.Attributes
 	}
 	return nil
+}
+
+func (x *Link) GetLocalIpv4Address() string {
+	if x != nil {
+		return x.LocalIpv4Address
+	}
+	return ""
+}
+
+func (x *Link) GetRemoteIpv4Address() string {
+	if x != nil {
+		return x.RemoteIpv4Address
+	}
+	return ""
+}
+
+func (x *Link) GetLocalIpv6Address() string {
+	if x != nil {
+		return x.LocalIpv6Address
+	}
+	return ""
+}
+
+func (x *Link) GetRemoteIpv6Address() string {
+	if x != nil {
+		return x.RemoteIpv6Address
+	}
+	return ""
 }
 
 type Prefix struct {
@@ -1582,7 +1614,7 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"attributes\x18\f \x03(\v2\x13.bgpls.v1.AttributeR\n" +
 	"attributes\x12$\n" +
 	"\x0eipv4_router_id\x18\r \x01(\tR\fipv4RouterId\x12$\n" +
-	"\x0eipv6_router_id\x18\x0e \x01(\tR\fipv6RouterId\"\xa4\x06\n" +
+	"\x0eipv6_router_id\x18\x0e \x01(\tR\fipv6RouterId\"\xe0\a\n" +
 	"\x04Link\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12\"\n" +
 	"\rlocal_node_id\x18\x02 \x01(\tR\vlocalNodeId\x12$\n" +
@@ -1605,7 +1637,11 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"\x0eadjacency_sids\x18\x11 \x03(\rR\radjacencySids\x123\n" +
 	"\n" +
 	"attributes\x18\x12 \x03(\v2\x13.bgpls.v1.AttributeR\n" +
-	"attributes\"\xd6\x02\n" +
+	"attributes\x12,\n" +
+	"\x12local_ipv4_address\x18\x13 \x01(\tR\x10localIpv4Address\x12.\n" +
+	"\x13remote_ipv4_address\x18\x14 \x01(\tR\x11remoteIpv4Address\x12,\n" +
+	"\x12local_ipv6_address\x18\x15 \x01(\tR\x10localIpv6Address\x12.\n" +
+	"\x13remote_ipv6_address\x18\x16 \x01(\tR\x11remoteIpv6Address\"\xd6\x02\n" +
 	"\x06Prefix\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\x12$\n" +
