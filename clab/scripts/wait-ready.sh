@@ -26,14 +26,25 @@ if [[ "$health_ok" -ne 1 ]]; then
   exit 1
 fi
 
+json_uint() {
+  # protojson encodes uint64 as a quoted string: "node_count": "8"
+  printf '%s\n' "$1" | awk -v key="$2" '
+    $0 ~ "\"" key "\"" {
+      gsub(/[^0-9]/, "", $2)
+      if ($2 != "") { print $2; exit }
+    }
+  '
+}
+
 echo "API is healthy, waiting for BGP-LS sessions and topology"
 while (( SECONDS < deadline )); do
   peers=$("$CLI" peers list 2>/dev/null || true)
   summary=$("$CLI" topology summary 2>/dev/null || true)
   established=$(printf '%s\n' "$peers" | grep -c 'PEER_SESSION_STATE_ESTABLISHED' || true)
-  nodes=$(printf '%s\n' "$summary" | awk -F: '/"node_count"/{gsub(/[ ,]/,"",$2); print $2; exit}')
+  nodes=$(json_uint "$summary" "node_count")
+  established=${established:-0}
   nodes=${nodes:-0}
-  if [[ "$established" -ge 1 && "$nodes" -ge 8 ]]; then
+  if (( established >= 1 && nodes >= 8 )); then
     echo
     echo "lab is ready"
     printf '%s\n' "$summary"
