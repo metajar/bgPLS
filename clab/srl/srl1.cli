@@ -65,8 +65,7 @@ interface lo0 {
 routing-policy {
     policy accept-bgpls {
         default-action {
-            accept {
-            }
+            policy-result accept
         }
     }
 }
