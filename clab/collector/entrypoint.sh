@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-addrs=${COLLECTOR_ADDRS:-"eth1=10.0.1.1/30,eth2=10.0.2.1/30"}
+addrs=${COLLECTOR_ADDRS:-"eth1=10.0.1.1/30,eth2=10.0.2.1/30,eth3=10.0.3.1/30,eth4=10.0.4.1/30"}
 config=${BGPLS_CONFIG:-/etc/bgpls/bgpls.yaml}
 
 wait_for_iface() {

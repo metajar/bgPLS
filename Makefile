@@ -23,7 +23,7 @@ clab-prereq:
 	@command -v docker >/dev/null || { echo "docker is required on the Containerlab host"; exit 1; }
 	@command -v $(CONTAINERLAB) >/dev/null || { echo "containerlab is required. Install it from https://containerlab.dev/install/ or set CONTAINERLAB='sudo containerlab'"; exit 1; }
 	@command -v openssl >/dev/null || { echo "openssl is required to mint the lab mTLS certificates"; exit 1; }
-	@command -v python3 >/dev/null || { echo "python3 is required to render FRR configs"; exit 1; }
+	@command -v python3 >/dev/null || { echo "python3 is required to render FRR and SR Linux configs"; exit 1; }
 	@docker info >/dev/null 2>&1 || { echo "docker is not usable from this user. Add the user to the docker group or run with a working Docker context."; exit 1; }
 
 clab-render:
@@ -58,7 +58,7 @@ clab: clab-deploy clab-ready
 	echo "  ./clab/scripts/bgpls.sh topology nodes --domain core"; \
 	echo "  ./clab/scripts/bgpls.sh topology links --domain core"; \
 	echo "  ./clab/scripts/bgpls.sh topology prefixes --domain core"; \
-	echo "  ./clab/scripts/bgpls.sh path compute --domain core --source r1 --destination r8 --metric igp"; \
+	echo "  ./clab/scripts/bgpls.sh path compute --domain core --source r1 --destination srl2 --metric igp"; \
 	echo "  ./clab/scripts/bgpls.sh peers list"; \
 	echo; \
 	echo "Raw CLI equivalent:"; \

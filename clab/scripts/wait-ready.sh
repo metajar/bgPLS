@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 CLI="$ROOT/clab/scripts/bgpls.sh"
-TIMEOUT=${CLAB_WAIT_TIMEOUT:-180}
+TIMEOUT=${CLAB_WAIT_TIMEOUT:-300}
 CONTAINER=${BGPLS_CONTAINER:-clab-bgpls-collector}
 
 echo "waiting up to ${TIMEOUT}s for the collector API and BGP-LS topology"
@@ -44,7 +44,7 @@ while (( SECONDS < deadline )); do
   nodes=$(json_uint "$summary" "node_count")
   established=${established:-0}
   nodes=${nodes:-0}
-  if (( established >= 1 && nodes >= 8 )); then
+  if (( established >= 1 && nodes >= 10 )); then
     echo
     echo "lab is ready"
     printf '%s\n' "$summary"
@@ -69,6 +69,13 @@ for n in r1 r2; do
   docker exec "clab-bgpls-${n}" vtysh -c "show bgp link-state link-state" >&2 || true
   echo "-- ${n} mpls-te database --" >&2
   docker exec "clab-bgpls-${n}" vtysh -c "show isis mpls-te database" >&2 || true
+done
+echo "--- SR Linux BGP-LS producers ---" >&2
+for n in srl1 srl2; do
+  echo "-- ${n} isis adjacency --" >&2
+  docker exec "clab-bgpls-${n}" sr_cli -c "show network-instance default protocols isis adjacency" >&2 || true
+  echo "-- ${n} bgp neighbor --" >&2
+  docker exec "clab-bgpls-${n}" sr_cli -c "show network-instance default protocols bgp neighbor" >&2 || true
 done
 echo "hint: make clab-status" >&2
 exit 1

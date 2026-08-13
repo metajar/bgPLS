@@ -6,23 +6,25 @@ Clone this repository on a Linux host with Docker and [Containerlab](https://con
 make clab
 ```
 
-That builds the collector image, mints lab mTLS certificates, deploys eight FRR routers plus bgPLS, and waits until BGP-LS topology is visible. Go is not required on the lab host; the collector image is built inside Docker.
+That builds the collector image, mints lab mTLS certificates, deploys eight FRR routers plus two SR Linux nodes and bgPLS, and waits until BGP-LS topology is visible. Go is not required on the lab host; the collector image is built inside Docker. The first deploy pulls `ghcr.io/nokia/srlinux:26.7.1-554`.
 
 ## What you get
 
-- Eight FRR 10.7 routers in a dual-core / dual-edge IS-IS Level-2 fabric with IPv4 and IPv6 loopbacks and mixed IGP metrics.
-- r1 and r2 independently originate the IS-IS traffic-engineering database over BGP-LS (AFI 16388/SAFI 71). r3-r8 are IS-IS only.
-- The collector peers with r1 and r2 over dedicated links that are not in IS-IS.
+- Eight FRR 10.7 routers and two Nokia SR Linux 26.7 nodes in a dual-core / dual-edge IS-IS Level-2 fabric with IPv4 and IPv6 loopbacks and mixed IGP metrics.
+- r1, r2, srl1, and srl2 independently originate the IS-IS traffic-engineering database over BGP-LS (AFI 16388/SAFI 71). r3-r8 are IS-IS only.
+- The collector peers with the four producers over dedicated links that are not in IS-IS.
 - mTLS API on `https://127.0.0.1:7443` and Prometheus metrics on `http://127.0.0.1:9090/metrics`.
 
 ```text
                     collector
-                   /         \
-                 r1 --------- r2
-                /  \         /  \
-              r3 -- r4     r5 -- r6
-               |  X  |     |  X  |
-              r7 ----+-----+---- r8
+               /    /     \    \
+             r1   srl1   srl2   r2
+            /  \               /  \
+          r3 -- r4           r5 -- r6
+           |  X  |           |  X  |
+          r7 ----+-----------+---- r8
+           |                       |
+         srl1 ------------------- srl2
 ```
 
 ## Query the API
@@ -34,14 +36,14 @@ That builds the collector image, mints lab mTLS certificates, deploys eight FRR 
 ./bgpls topology nodes --domain core
 ./bgpls topology links --domain core
 ./bgpls topology prefixes --domain core
-./bgpls path compute --domain core --source r1 --destination r8 --metric igp
+./bgpls path compute --domain core --source r1 --destination srl2 --metric igp
 ./bgpls peers list
 ```
 
 If node names have not appeared yet, use loopback addresses:
 
 ```sh
-./clab/scripts/bgpls.sh path compute --domain core --source 10.255.0.1 --destination 10.255.0.8 --metric igp
+./clab/scripts/bgpls.sh path compute --domain core --source 10.255.0.1 --destination 10.255.0.10 --metric igp
 ```
 
 Equivalent explicit invocation:
@@ -69,4 +71,4 @@ If Containerlab must run as root:
 make clab CONTAINERLAB="sudo containerlab"
 ```
 
-`make clab` recreates the lab and wipes `clab/data` so the YAML peer list is bootstrapped again. FRR 10.7 or newer is required because that is the first FRR release that originates BGP-LS from the IGP TED.
+`make clab` recreates the lab and wipes `clab/data` so the YAML peer list is bootstrapped again. FRR 10.7 or newer is required because that is the first FRR release that originates BGP-LS from the IGP TED. SR Linux nodes use the 7250 IXR-6e profile (`ixr-6e`) because BGP-LS and IS-IS TE are supported on 7250 IXR / 7730 SXR, not the default 7220 IXR-D image.

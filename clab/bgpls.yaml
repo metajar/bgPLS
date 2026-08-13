@@ -19,7 +19,7 @@ api:
       uri_sans: ["spiffe://bgpls.lab/bgpls/reader/*"]
 
 bgp:
-  router_id: 10.255.0.10
+  router_id: 10.255.0.254
   listen_port: -1
 
 retention:
@@ -29,7 +29,7 @@ retention:
 domains:
   - id: core
     name: Core IS-IS fabric
-    description: Eight-router Containerlab IS-IS domain exported over BGP-LS
+    description: Mixed FRR and SR Linux Containerlab IS-IS domain exported over BGP-LS
 
 peers:
   - id: r1
@@ -49,4 +49,22 @@ peers:
     local_as: 65000
     remote_as: 65000
     source_preference: 90
+    enabled: true
+  - id: srl1
+    domain_id: core
+    name: SR Linux srl1 BGP-LS producer
+    remote_address: 10.0.3.2
+    local_address: 10.0.3.1
+    local_as: 65000
+    remote_as: 65000
+    source_preference: 80
+    enabled: true
+  - id: srl2
+    domain_id: core
+    name: SR Linux srl2 BGP-LS producer
+    remote_address: 10.0.4.2
+    local_address: 10.0.4.1
+    local_as: 65000
+    remote_as: 65000
+    source_preference: 70
     enabled: true

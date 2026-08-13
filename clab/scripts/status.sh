@@ -22,6 +22,10 @@ for n in r1 r2 r3 r4 r5 r6 r7 r8; do
   echo "-- $n --"
   docker exec "${PREFIX}-${n}" vtysh -c "show isis neighbor" 2>/dev/null || echo "unable to query $n"
 done
+for n in srl1 srl2; do
+  echo "-- $n --"
+  docker exec "${PREFIX}-${n}" sr_cli -c "show network-instance default protocols isis adjacency" 2>/dev/null || echo "unable to query $n"
+done
 
 echo
 echo "== BGP-LS on producers =="
@@ -30,4 +34,8 @@ for n in r1 r2; do
   docker exec "${PREFIX}-${n}" vtysh -c "show bgp summary" 2>/dev/null || true
   echo "-- $n link-state --"
   docker exec "${PREFIX}-${n}" vtysh -c "show bgp link-state link-state" 2>/dev/null || true
+done
+for n in srl1 srl2; do
+  echo "-- $n bgp neighbor --"
+  docker exec "${PREFIX}-${n}" sr_cli -c "show network-instance default protocols bgp neighbor" 2>/dev/null || true
 done
