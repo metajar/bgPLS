@@ -10,9 +10,9 @@ That builds the collector image, mints lab mTLS certificates, deploys eight FRR 
 
 ## What you get
 
-- Eight FRR 10.7 routers in a dual-core / dual-edge IS-IS Level-2 fabric with IPv4 and IPv6 loopbacks, varied IGP/TE metrics, delay, bandwidth, and admin groups.
-- r1 as a BGP-LS route reflector, r2 as a second producer, and iBGP link-state sessions from r3-r8 into r1.
-- A bgPLS collector peering to r1 and r2 over dedicated links that are not in IS-IS.
+- Eight FRR 10.7 routers in a dual-core / dual-edge IS-IS Level-2 fabric with IPv4 and IPv6 loopbacks and mixed IGP metrics.
+- r1 and r2 independently originate the IS-IS traffic-engineering database over BGP-LS (AFI 16388/SAFI 71). r3-r8 are IS-IS only.
+- The collector peers with r1 and r2 over dedicated links that are not in IS-IS.
 - mTLS API on `https://127.0.0.1:7443` and Prometheus metrics on `http://127.0.0.1:9090/metrics`.
 
 ```text

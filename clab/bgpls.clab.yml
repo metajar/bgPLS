@@ -8,8 +8,8 @@
 #               |  X  |     |  X  |
 #              r7 ----+-----+---- r8
 #
-# r1 is the BGP-LS route reflector. r2 is a second producer. The collector
-# opens iBGP AFI 16388/SAFI 71 sessions to both and exposes the API on :7443.
+# r1 and r2 independently originate the IS-IS TED over BGP-LS to the collector.
+# The remaining routers are IS-IS-only.
 name: bgpls
 prefix: clab
 

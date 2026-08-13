@@ -48,5 +48,16 @@ echo "--- peers ---" >&2
 "$CLI" peers list >&2 || true
 echo "--- summary ---" >&2
 "$CLI" topology summary >&2 || true
+echo "--- FRR BGP-LS producers ---" >&2
+for n in r1 r2; do
+  echo "-- ${n} isis neighbors --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show isis neighbor" >&2 || true
+  echo "-- ${n} bgp summary --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show bgp summary" >&2 || true
+  echo "-- ${n} bgp link-state --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show bgp link-state link-state" >&2 || true
+  echo "-- ${n} mpls-te database --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show isis mpls-te database" >&2 || true
+done
 echo "hint: make clab-status" >&2
 exit 1
