@@ -1,6 +1,10 @@
 /bgpls
 /dist/
 /data/
+/clab/data/
+/clab/pki/
+__pycache__/
+*.pyc
 /*.pem
 coverage.out
 *.log

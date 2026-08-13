@@ -1,0 +1,10 @@
+.git
+/bgpls
+/data
+/clab/data
+/clab/pki
+__pycache__
+*.pyc
+*.log
+coverage.out
+*.pem

@@ -27,6 +27,24 @@ For a copy-paste setup from local smoke test through a real BGP-LS peer, see the
 - JSON-oriented CLI, Prometheus endpoint, structured logging, health check, and
   atomic TLS/RBAC reload on `SIGHUP`.
 
+## Containerlab test fabric
+
+On a Linux host with Docker and [Containerlab](https://containerlab.dev/install/), clone this repository and run:
+
+```sh
+make clab
+```
+
+That deploys eight FRR routers, a bgPLS collector, and lab mTLS certificates. When it finishes, query BGP-LS topology immediately:
+
+```sh
+./clab/scripts/bgpls.sh topology summary
+./clab/scripts/bgpls.sh topology nodes --domain core
+./clab/scripts/bgpls.sh path compute --domain core --source r1 --destination r8 --metric igp
+```
+
+The API listens on `https://127.0.0.1:7443`. See [clab/README.md](clab/README.md) for the topology, certificates, and destroy/status commands.
+
 ## Build and test
 
 Requirements are Go 1.26 and Buf 1.71 or newer.

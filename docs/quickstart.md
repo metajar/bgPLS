@@ -4,6 +4,8 @@ This guide gets bgPLS running locally first, then connects it to a real BGP-LS
 speaker. The fastest setup uses an active BGP connection from bgPLS to a route
 reflector and a loopback-only, plaintext API while validating the deployment.
 
+To exercise a full eight-router IS-IS fabric instead of a single upstream speaker, clone this repository on a Containerlab host and run `make clab`. See [clab/README.md](../clab/README.md).
+
 ## 1. Prerequisites
 
 You need:

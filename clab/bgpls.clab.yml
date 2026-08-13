@@ -1,0 +1,114 @@
+# Eight FRR routers in a dual-core / dual-edge IS-IS fabric, plus a bgPLS collector.
+#
+#                    collector
+#                   /         \
+#                 r1 --------- r2
+#                /  \         /  \
+#              r3 -- r4     r5 -- r6
+#               |  X  |     |  X  |
+#              r7 ----+-----+---- r8
+#
+# r1 is the BGP-LS route reflector. r2 is a second producer. The collector
+# opens iBGP AFI 16388/SAFI 71 sessions to both and exposes the API on :7443.
+name: bgpls
+prefix: clab
+
+mgmt:
+  network: bgpls-mgmt
+
+topology:
+  defaults:
+    sysctls:
+      net.ipv4.ip_forward: "1"
+      net.ipv6.conf.all.forwarding: "1"
+
+  nodes:
+    collector:
+      kind: linux
+      image: bgpls:local
+      ports:
+        - 7443:7443/tcp
+        - 9090:9090/tcp
+      env:
+        COLLECTOR_ADDRS: eth1=10.0.1.1/30,eth2=10.0.2.1/30
+      binds:
+        - bgpls.yaml:/etc/bgpls/bgpls.yaml:ro
+        - pki:/etc/bgpls/pki:ro
+        - data:/var/lib/bgpls
+
+    r1:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r1.conf:/etc/frr/frr.conf
+    r2:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r2.conf:/etc/frr/frr.conf
+    r3:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r3.conf:/etc/frr/frr.conf
+    r4:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r4.conf:/etc/frr/frr.conf
+    r5:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r5.conf:/etc/frr/frr.conf
+    r6:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r6.conf:/etc/frr/frr.conf
+    r7:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r7.conf:/etc/frr/frr.conf
+    r8:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.0
+      binds:
+        - frr/daemons:/etc/frr/daemons:ro
+        - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
+        - frr/routers/r8.conf:/etc/frr/frr.conf
+
+  links:
+    # BGP-LS transport only (not in IS-IS)
+    - endpoints: ["collector:eth1", "r1:eth1"]
+    - endpoints: ["collector:eth2", "r2:eth1"]
+    # Dual-core, dual-edge IS-IS fabric
+    - endpoints: ["r1:eth2", "r2:eth2"]
+    - endpoints: ["r1:eth3", "r3:eth1"]
+    - endpoints: ["r1:eth4", "r7:eth1"]
+    - endpoints: ["r2:eth3", "r4:eth1"]
+    - endpoints: ["r2:eth4", "r8:eth1"]
+    - endpoints: ["r3:eth2", "r4:eth2"]
+    - endpoints: ["r3:eth3", "r5:eth1"]
+    - endpoints: ["r3:eth4", "r6:eth1"]
+    - endpoints: ["r4:eth3", "r5:eth2"]
+    - endpoints: ["r4:eth4", "r6:eth2"]
+    - endpoints: ["r5:eth3", "r6:eth3"]
+    - endpoints: ["r5:eth4", "r7:eth2"]
+    - endpoints: ["r6:eth4", "r8:eth2"]
+    - endpoints: ["r7:eth3", "r8:eth3"]
