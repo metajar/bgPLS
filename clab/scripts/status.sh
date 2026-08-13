@@ -35,7 +35,3 @@ for n in r1 r2; do
   echo "-- $n link-state --"
   docker exec "${PREFIX}-${n}" vtysh -c "show bgp link-state link-state" 2>/dev/null || true
 done
-for n in srl1 srl2; do
-  echo "-- $n bgp neighbor --"
-  docker exec "${PREFIX}-${n}" sr_cli -c "show network-instance default protocols bgp neighbor" 2>/dev/null || true
-done

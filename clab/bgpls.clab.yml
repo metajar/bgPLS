@@ -2,17 +2,17 @@
 # fabric, with a bgPLS collector.
 #
 #                    collector
-#               /    /     \    \
-#             r1   srl1   srl2   r2
-#            /  \               /  \
-#          r3 -- r4           r5 -- r6
-#           |  X  |           |  X  |
-#          r7 ----+-----------+---- r8
-#           |                       |
-#         srl1 ------------------- srl2
+#                   /         \
+#                 r1 --------- r2
+#                /  \         /  \
+#              r3 -- r4     r5 -- r6
+#               |  X  |     |  X  |
+#              r7 ----+-----+---- r8
+#               |                 |
+#             srl1 ------------- srl2
 #
-# r1, r2, srl1, and srl2 independently originate the IS-IS TED over BGP-LS to
-# the collector. The remaining FRR routers are IS-IS-only.
+# r1 and r2 originate the mixed FRR/SR Linux IS-IS TED over BGP-LS.
+# srl1/srl2 are IS-IS only: 7220 IXR-D has no BGP-LS AFI and no MT-ISIS.
 name: bgpls
 prefix: clab
 
@@ -27,8 +27,9 @@ topology:
 
   kinds:
     nokia_srlinux:
-      # BGP-LS and IS-IS TE are supported on 7250 IXR / 7730 SXR, not 7220 IXR-D.
-      type: ixr-6e
+      # ixr-d3l boots as a pizza box. ixr-6e is a chassis whose CPM/IMM are still
+      # TENTATIVE when Containerlab applies startup-config, which closes sr_cli.
+      type: ixr-d3l
       image: ghcr.io/nokia/srlinux:26.7.1-554
 
   nodes:
@@ -40,7 +41,7 @@ topology:
         - 8080:8080/tcp
         - 9090:9090/tcp
       env:
-        COLLECTOR_ADDRS: eth1=10.0.1.1/30,eth2=10.0.2.1/30,eth3=10.0.3.1/30,eth4=10.0.4.1/30
+        COLLECTOR_ADDRS: eth1=10.0.1.1/30,eth2=10.0.2.1/30
       binds:
         - bgpls.yaml:/etc/bgpls/bgpls.yaml:ro
         - pki:/etc/bgpls/pki:ro
@@ -114,8 +115,6 @@ topology:
     # BGP-LS transport only (not in IS-IS)
     - endpoints: ["collector:eth1", "r1:eth1"]
     - endpoints: ["collector:eth2", "r2:eth1"]
-    - endpoints: ["collector:eth3", "srl1:ethernet-1/1"]
-    - endpoints: ["collector:eth4", "srl2:ethernet-1/1"]
     # Dual-core, dual-edge IS-IS fabric
     - endpoints: ["r1:eth2", "r2:eth2"]
     - endpoints: ["r1:eth3", "r3:eth1"]
@@ -132,6 +131,6 @@ topology:
     - endpoints: ["r6:eth4", "r8:eth2"]
     - endpoints: ["r7:eth3", "r8:eth3"]
     # SR Linux edge pair
-    - endpoints: ["r7:eth4", "srl1:ethernet-1/2"]
-    - endpoints: ["r8:eth4", "srl2:ethernet-1/2"]
-    - endpoints: ["srl1:ethernet-1/3", "srl2:ethernet-1/3"]
+    - endpoints: ["r7:eth4", "srl1:ethernet-1/1"]
+    - endpoints: ["r8:eth4", "srl2:ethernet-1/1"]
+    - endpoints: ["srl1:ethernet-1/2", "srl2:ethernet-1/2"]

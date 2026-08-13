@@ -70,12 +70,17 @@ for n in r1 r2; do
   echo "-- ${n} mpls-te database --" >&2
   docker exec "clab-bgpls-${n}" vtysh -c "show isis mpls-te database" >&2 || true
 done
-echo "--- SR Linux BGP-LS producers ---" >&2
+echo "--- FRR edge to SR Linux ---" >&2
+for n in r7 r8; do
+  echo "-- ${n} isis neighbors --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show isis neighbor" >&2 || true
+  echo "-- ${n} isis database --" >&2
+  docker exec "clab-bgpls-${n}" vtysh -c "show isis database" >&2 || true
+done
+echo "--- SR Linux IS-IS ---" >&2
 for n in srl1 srl2; do
   echo "-- ${n} isis adjacency --" >&2
   docker exec "clab-bgpls-${n}" sr_cli -c "show network-instance default protocols isis adjacency" >&2 || true
-  echo "-- ${n} bgp neighbor --" >&2
-  docker exec "clab-bgpls-${n}" sr_cli -c "show network-instance default protocols bgp neighbor" >&2 || true
 done
 echo "hint: make clab-status" >&2
 exit 1

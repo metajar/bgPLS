@@ -50,21 +50,3 @@ peers:
     remote_as: 65000
     source_preference: 90
     enabled: true
-  - id: srl1
-    domain_id: core
-    name: SR Linux srl1 BGP-LS producer
-    remote_address: 10.0.3.2
-    local_address: 10.0.3.1
-    local_as: 65000
-    remote_as: 65000
-    source_preference: 80
-    enabled: true
-  - id: srl2
-    domain_id: core
-    name: SR Linux srl2 BGP-LS producer
-    remote_address: 10.0.4.2
-    local_address: 10.0.4.1
-    local_as: 65000
-    remote_as: 65000
-    source_preference: 70
-    enabled: true

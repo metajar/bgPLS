@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Render FRR and SR Linux configs for the bgPLS Containerlab topology.
 
-BGP-LS origination: FRR r1/r2 and SR Linux srl1/srl2 independently export the
-shared IS-IS TED over AFI 16388/SAFI 71 toward bgPLS. The remaining FRR
-routers are IS-IS only.
+BGP-LS origination: FRR r1/r2 export the shared IS-IS TED over AFI 16388/SAFI 71
+toward bgPLS. SR Linux srl1/srl2 are IS-IS only; 7220 IXR-D has no BGP-LS AFI
+and no MT-ISIS, so IPv6 stays in topology MT0 on both FRR and SR Linux.
 """
 
 from __future__ import annotations
@@ -70,24 +70,22 @@ ROUTERS: dict[int, list[tuple[str, str, str, int, bool]]] = {
     ],
 }
 
-# name, node-id, collector ipv4, IS-IS ifaces: (port, ipv4, ipv6, metric, te-name)
+# name, node-id, IS-IS ifaces: (port, ipv4, ipv6, metric, te-name)
 SRL_NODES: list[dict] = [
     {
         "name": "srl1",
         "id": 9,
-        "collector": ("10.0.3.1", "10.0.3.2/30"),
         "isis": [
-            ("ethernet-1/2", "10.1.79.2/30", "fd00:1:79::2/64", 25, "to-r7"),
-            ("ethernet-1/3", "10.1.90.1/30", "fd00:1:90::1/64", 20, "to-srl2"),
+            ("ethernet-1/1", "10.1.79.2/30", "fd00:1:79::2/64", 25, "to-r7"),
+            ("ethernet-1/2", "10.1.90.1/30", "fd00:1:90::1/64", 20, "to-srl2"),
         ],
     },
     {
         "name": "srl2",
         "id": 10,
-        "collector": ("10.0.4.1", "10.0.4.2/30"),
         "isis": [
-            ("ethernet-1/2", "10.1.80.2/30", "fd00:1:80::2/64", 25, "to-r8"),
-            ("ethernet-1/3", "10.1.90.2/30", "fd00:1:90::2/64", 20, "to-srl1"),
+            ("ethernet-1/1", "10.1.80.2/30", "fd00:1:80::2/64", 25, "to-r8"),
+            ("ethernet-1/2", "10.1.90.2/30", "fd00:1:90::2/64", 20, "to-srl1"),
         ],
     },
 ]
@@ -111,6 +109,7 @@ def iface_block(iface: str, ipv4: str, ipv6: str, metric: int, isis: bool) -> st
                 " isis circuit-type level-2",
                 " isis hello-interval 1",
                 " isis hello-multiplier 3",
+                " no isis hello padding",
                 " isis network point-to-point",
                 f" isis metric {metric}",
             ]
@@ -167,9 +166,10 @@ def render_frr(n: int) -> str:
         " is-type level-2-only",
         " hostname dynamic",
         " log-adjacency-changes",
-        " topology ipv6-unicast",
+        " metric-style wide",
         " redistribute ipv4 connected level-2",
         " redistribute ipv6 connected level-2",
+        " lsp-mtu 1492",
         " lsp-gen-interval 1",
         " lsp-refresh-interval 10",
         " max-lsp-lifetime 350",
@@ -186,79 +186,44 @@ def render_frr(n: int) -> str:
     return "\n".join(blocks) + "\n"
 
 
-def srl_interface(iface: str, ipv4: str, ipv6: str = "", description: str = "") -> str:
-    lines = [f"interface {iface} {{", "    admin-state enable"]
+def srl_set_iface(iface: str, ipv4: str, ipv6: str = "", description: str = "") -> list[str]:
+    lines = [f"set / interface {iface} admin-state enable"]
     if description:
-        lines.append(f'    description "{description}"')
+        lines.append(f'set / interface {iface} description "{description}"')
     lines.extend(
         [
-            "    subinterface 0 {",
-            "        admin-state enable",
-            "        ipv4 {",
-            "            admin-state enable",
-            f"            address {ipv4} {{",
-            "            }",
-            "        }",
+            f"set / interface {iface} subinterface 0 admin-state enable",
+            f"set / interface {iface} subinterface 0 ipv4 admin-state enable",
+            f"set / interface {iface} subinterface 0 ipv4 address {ipv4}",
         ]
     )
     if ipv6:
         lines.extend(
             [
-                "        ipv6 {",
-                "            admin-state enable",
-                f"            address {ipv6} {{",
-                "            }",
-                "        }",
+                f"set / interface {iface} subinterface 0 ipv6 admin-state enable",
+                f"set / interface {iface} subinterface 0 ipv6 address {ipv6}",
             ]
         )
-    lines.extend(["    }", "}"])
-    return "\n".join(lines)
+    return lines
 
 
-def srl_isis_iface(iface: str, metric: int, *, passive: bool = False) -> str:
+def srl_set_isis_iface(iface: str, metric: int, *, passive: bool = False) -> list[str]:
+    prefix = f"set / network-instance default protocols isis instance 1 interface {iface}.0"
+    lines = [f"{prefix} admin-state enable"]
     if passive:
-        return "\n".join(
-            [
-                f"                interface {iface}.0 {{",
-                "                    admin-state enable",
-                "                    passive true",
-                "                }",
-            ]
-        )
-    return "\n".join(
+        lines.append(f"{prefix} passive true")
+        return lines
+    lines.extend(
         [
-            f"                interface {iface}.0 {{",
-            "                    admin-state enable",
-            "                    circuit-type point-to-point",
-            "                    ipv4-unicast {",
-            "                        admin-state enable",
-            "                    }",
-            "                    ipv6-unicast {",
-            "                        admin-state enable",
-            "                    }",
-            "                    level 2 {",
-            f"                        metric {metric}",
-            "                        timers {",
-            "                            hello-interval 1",
-            "                            hello-multiplier 3",
-            "                        }",
-            "                    }",
-            "                }",
+            f"{prefix} circuit-type point-to-point",
+            f"{prefix} ipv4-unicast admin-state enable",
+            f"{prefix} ipv6-unicast admin-state enable",
+            f"{prefix} level 2 metric {metric}",
+            f"{prefix} level 2 timers hello-interval 1",
+            f"{prefix} level 2 timers hello-multiplier 3",
         ]
     )
-
-
-def srl_te_iface(name: str, iface: str) -> str:
-    return "\n".join(
-        [
-            f"        interface {name} {{",
-            "            interface-ref {",
-            f"                interface {iface}",
-            "                subinterface 0",
-            "            }",
-            "        }",
-        ]
-    )
+    return lines
 
 
 def render_srl(node: dict) -> str:
@@ -266,119 +231,34 @@ def render_srl(node: dict) -> str:
     n = node["id"]
     lo = LOOPBACKS[n]
     lo6 = LOOPBACKS_V6[n]
-    collector_peer, collector_local = node["collector"]
-    collector_local_addr = collector_local.split("/")[0]
     isis_ifaces = node["isis"]
+    inst = "set / network-instance default protocols isis instance 1"
 
-    iface_blocks = [
-        srl_interface("ethernet-1/1", collector_local, description="BGP-LS to collector"),
-    ]
+    lines = [f"# {name}: Nokia SR Linux IS-IS speaker (BGP-LS is not on 7220 IXR-D)"]
     for iface, ipv4, ipv6, _metric, te_name in isis_ifaces:
-        iface_blocks.append(srl_interface(iface, ipv4, ipv6, te_name.replace("to-", "IS-IS to ")))
-    iface_blocks.append(srl_interface("lo0", f"{lo}/32", f"{lo6}/128", "system loopback"))
-
-    ni_ifaces = ["    interface ethernet-1/1.0 {", "    }"]
-    te_ifaces = []
-    isis_ifaces_cfg = []
-    for iface, _ipv4, _ipv6, metric, te_name in isis_ifaces:
-        ni_ifaces.extend([f"    interface {iface}.0 {{", "    }"])
-        te_ifaces.append(srl_te_iface(te_name, iface))
-        isis_ifaces_cfg.append(srl_isis_iface(iface, metric))
-    ni_ifaces.extend(["    interface lo0.0 {", "    }"])
-    isis_ifaces_cfg.append(srl_isis_iface("lo0", 0, passive=True))
-
-    return "\n".join(
+        lines.extend(srl_set_iface(iface, ipv4, ipv6, te_name.replace("to-", "IS-IS to ")))
+    lines.extend(srl_set_iface("system0", f"{lo}/32", f"{lo6}/128", "system loopback"))
+    lines.append(f"set / network-instance default router-id {lo}")
+    for iface, _ipv4, _ipv6, _metric, _te_name in isis_ifaces:
+        lines.append(f"set / network-instance default interface {iface}.0")
+    lines.extend(
         [
-            f"# {name}: Nokia SR Linux IS-IS speaker and BGP-LS producer",
-            *iface_blocks,
-            "routing-policy {",
-            "    policy accept-bgpls {",
-            "        default-action {",
-            "            policy-result accept",
-            "        }",
-            "    }",
-            "}",
-            "network-instance default {",
-            f"    router-id {lo}",
-            *ni_ifaces,
-            "    traffic-engineering {",
-            "        autonomous-system 65000",
-            f"        ipv4-te-router-id {lo}",
-            f"        ipv6-te-router-id {lo6}",
-            *te_ifaces,
-            "    }",
-            "    protocols {",
-            "        isis {",
-            "            instance 1 {",
-            "                admin-state enable",
-            "                level-capability L2",
-            f"                net [ {isis_net(n)} ]",
-            "                ipv4-unicast {",
-            "                    admin-state enable",
-            "                }",
-            "                ipv6-unicast {",
-            "                    admin-state enable",
-            "                    multi-topology true",
-            "                }",
-            "                traffic-engineering {",
-            "                    advertisement true",
-            "                }",
-            "                te-database-install {",
-            "                    bgp-ls {",
-            "                        igp-identifier 1",
-            "                    }",
-            "                }",
-            *isis_ifaces_cfg,
-            "            }",
-            "        }",
-            "        bgp {",
-            "            admin-state enable",
-            "            autonomous-system 65000",
-            f"            router-id {lo}",
-            "            afi-safi ipv4-unicast {",
-            "                admin-state disable",
-            "            }",
-            "            afi-safi link-state {",
-            "                admin-state enable",
-            "                export-policy [",
-            "                    accept-bgpls",
-            "                ]",
-            "            }",
-            "            group bgpls {",
-            "                admin-state enable",
-            "                peer-as 65000",
-            "                export-policy [",
-            "                    accept-bgpls",
-            "                ]",
-            "                afi-safi ipv4-unicast {",
-            "                    admin-state disable",
-            "                }",
-            "                afi-safi link-state {",
-            "                    admin-state enable",
-            "                    export-policy [",
-            "                        accept-bgpls",
-            "                    ]",
-            "                    default-export-policy accept",
-            "                }",
-            "                transport {",
-            f"                    local-address {collector_local_addr}",
-            "                }",
-            "                timers {",
-            "                    hold-time 9",
-            "                    keepalive-interval 3",
-            "                }",
-            "            }",
-            f"            neighbor {collector_peer} {{",
-            "                admin-state enable",
-            "                peer-group bgpls",
-            '                description "bgPLS collector"',
-            "            }",
-            "        }",
-            "    }",
-            "}",
-            "",
+            "set / network-instance default interface system0.0",
+            f"{inst} admin-state enable",
+            f"{inst} level-capability L2",
+            f"{inst} net [{isis_net(n)}]",
+            f"{inst} hello-padding disable",
+            f"{inst} ipv4-unicast admin-state enable",
+            f"{inst} ipv6-unicast admin-state enable",
+            f"{inst} ipv6-unicast multi-topology false",
+            f"{inst} level 2 metric-style wide",
         ]
     )
+    for iface, _ipv4, _ipv6, metric, _te_name in isis_ifaces:
+        lines.extend(srl_set_isis_iface(iface, metric))
+    lines.extend(srl_set_isis_iface("system0", 0, passive=True))
+    lines.append("")
+    return "\n".join(lines)
 
 
 def main() -> None:
