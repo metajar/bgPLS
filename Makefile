@@ -50,8 +50,8 @@ clab-ready:
 clab: clab-deploy clab-ready
 	@host_ip=$$(cat clab/pki/host-ip 2>/dev/null || echo 127.0.0.1); \
 	echo; \
-	echo "bgPLS lab is up. API: https://127.0.0.1:7443  metrics: http://127.0.0.1:9090/metrics"; \
-	echo "If you are on another host, use https://$${host_ip}:7443 with the lab certificates in clab/pki."; \
+	echo "bgPLS lab is up. UI: http://127.0.0.1:8080/ui/  API: https://127.0.0.1:7443  metrics: http://127.0.0.1:9090/metrics"; \
+	echo "If you are on another host, open http://$${host_ip}:8080/ui/ or use https://$${host_ip}:7443 with the lab certificates in clab/pki."; \
 	echo; \
 	echo "Query topology:"; \
 	echo "  ./clab/scripts/bgpls.sh topology summary"; \

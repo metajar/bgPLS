@@ -16,5 +16,5 @@ COPY --from=build /out/bgpls /usr/local/bin/bgpls
 COPY clab/collector/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 7443 9090
+EXPOSE 7443 8080 9090
 ENTRYPOINT ["/entrypoint.sh"]

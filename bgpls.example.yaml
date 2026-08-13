@@ -1,12 +1,14 @@
 data_dir: ./data
 api:
   listen: 0.0.0.0:7443
+  # ui_listen: 127.0.0.1:8080
   metrics_listen: 127.0.0.1:9090
   tls:
     certificate: /etc/bgpls/server.crt
     private_key: /etc/bgpls/server.key
     client_cas:
       - /etc/bgpls/client-ca.crt
+    # allow_anonymous_reader: true
   rbac:
     - role: admin
       uri_sans: ["spiffe://example.net/bgpls/admin/*"]

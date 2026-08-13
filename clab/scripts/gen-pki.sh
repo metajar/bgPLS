@@ -108,6 +108,8 @@ EOF
   openssl x509 -req -in "$TMP/${role}.csr" -CA "$PKI/ca.crt" -CAkey "$PKI/ca.key" \
     -CAcreateserial -out "$PKI/${role}.crt" -days 825 -sha256 \
     -extfile "$TMP/${role}.cnf" -extensions ext >/dev/null 2>&1
+  openssl pkcs12 -export -inkey "$PKI/${role}.key" -in "$PKI/${role}.crt" \
+    -certfile "$PKI/ca.crt" -out "$PKI/${role}.p12" -passout pass:bgpls >/dev/null 2>&1
 }
 
 issue_client admin

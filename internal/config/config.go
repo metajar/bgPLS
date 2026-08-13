@@ -22,15 +22,17 @@ type Config struct {
 }
 type API struct {
 	Listen        string        `yaml:"listen"`
+	UIListen      string        `yaml:"ui_listen"`
 	TLS           TLS           `yaml:"tls"`
 	RBAC          []RoleMapping `yaml:"rbac"`
 	MetricsListen string        `yaml:"metrics_listen"`
 }
 type TLS struct {
-	Certificate         string   `yaml:"certificate"`
-	PrivateKey          string   `yaml:"private_key"`
-	ClientCAs           []string `yaml:"client_cas"`
-	DevelopmentInsecure bool     `yaml:"development_insecure"`
+	Certificate          string   `yaml:"certificate"`
+	PrivateKey           string   `yaml:"private_key"`
+	ClientCAs            []string `yaml:"client_cas"`
+	DevelopmentInsecure  bool     `yaml:"development_insecure"`
+	AllowAnonymousReader bool     `yaml:"allow_anonymous_reader"`
 }
 type RoleMapping struct {
 	Role    string   `yaml:"role"`
@@ -102,6 +104,11 @@ func (c Config) Validate() error {
 	}
 	if _, _, err := net.SplitHostPort(c.API.Listen); err != nil {
 		errs = append(errs, fmt.Errorf("api.listen: %w", err))
+	}
+	if c.API.UIListen != "" {
+		if _, _, err := net.SplitHostPort(c.API.UIListen); err != nil {
+			errs = append(errs, fmt.Errorf("api.ui_listen: %w", err))
+		}
 	}
 	if c.API.TLS.DevelopmentInsecure {
 		host, _, _ := net.SplitHostPort(c.API.Listen)

@@ -104,14 +104,24 @@ func serve(args []string) error {
 		return err
 	}
 	defer collector.Close(context.Background())
-	authorizer := apiServer.NewAuthorizer(cfg.API.RBAC, cfg.API.TLS.DevelopmentInsecure)
+	authorizer := apiServer.NewAuthorizer(cfg.API.RBAC, cfg.API.TLS.DevelopmentInsecure, cfg.API.TLS.AllowAnonymousReader)
 	handler := apiServer.NewHandler(s, collector, version, time.Now().UTC(), authorizer)
 	server := &http.Server{Addr: cfg.API.Listen, Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 3)
 	if cfg.API.MetricsListen != "" {
 		metrics := &http.Server{Addr: cfg.API.MetricsListen, Handler: promhttp.Handler(), ReadHeaderTimeout: 5 * time.Second}
 		go func() { errCh <- metrics.ListenAndServe() }()
 		defer metrics.Shutdown(context.Background())
+	}
+	if cfg.API.UIListen != "" {
+		uiAuthorizer := apiServer.NewAuthorizer(cfg.API.RBAC, false, true)
+		uiHandler := apiServer.NewHandler(s, collector, version, time.Now().UTC(), uiAuthorizer)
+		uiServer := &http.Server{Addr: cfg.API.UIListen, Handler: uiHandler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
+		go func() {
+			slog.Info("topology UI listening without client certificates", "address", cfg.API.UIListen, "ui", "http://"+cfg.API.UIListen+"/ui/")
+			errCh <- uiServer.ListenAndServe()
+		}()
+		defer uiServer.Shutdown(context.Background())
 	}
 	if cfg.API.TLS.DevelopmentInsecure {
 		go func() {
@@ -132,7 +142,14 @@ func serve(args []string) error {
 			return err
 		}
 		tlsListener := tls.NewListener(listener, outer)
-		go func() { slog.Info("mTLS API listening", "address", cfg.API.Listen, "ui", "https://"+cfg.API.Listen+"/ui/"); errCh <- server.Serve(tlsListener) }()
+		go func() {
+			if cfg.API.TLS.AllowAnonymousReader {
+				slog.Info("TLS API listening with optional client certificates", "address", cfg.API.Listen, "ui", "https://"+cfg.API.Listen+"/ui/")
+			} else {
+				slog.Info("mTLS API listening", "address", cfg.API.Listen, "ui", "https://"+cfg.API.Listen+"/ui/")
+			}
+			errCh <- server.Serve(tlsListener)
+		}()
 		hup := make(chan os.Signal, 1)
 		signal.Notify(hup, syscall.SIGHUP)
 		defer signal.Stop(hup)
@@ -149,7 +166,7 @@ func serve(args []string) error {
 					continue
 				}
 				active.Store(nextTLS)
-				authorizer.Reload(reloaded.API.RBAC)
+				authorizer.Reload(reloaded.API.RBAC, reloaded.API.TLS.AllowAnonymousReader)
 				slog.Info("TLS certificates and RBAC mappings reloaded")
 			}
 		}()

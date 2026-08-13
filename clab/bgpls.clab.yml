@@ -28,6 +28,7 @@ topology:
       image: bgpls:local
       ports:
         - 7443:7443/tcp
+        - 8080:8080/tcp
         - 9090:9090/tcp
       env:
         COLLECTOR_ADDRS: eth1=10.0.1.1/30,eth2=10.0.2.1/30

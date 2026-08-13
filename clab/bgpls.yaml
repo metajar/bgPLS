@@ -2,10 +2,12 @@ data_dir: /var/lib/bgpls
 
 api:
   listen: 0.0.0.0:7443
+  ui_listen: 0.0.0.0:8080
   metrics_listen: 0.0.0.0:9090
   tls:
     certificate: /etc/bgpls/pki/server.crt
     private_key: /etc/bgpls/pki/server.key
+    allow_anonymous_reader: true
     client_cas:
       - /etc/bgpls/pki/ca.crt
   rbac:

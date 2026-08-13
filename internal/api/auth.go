@@ -23,16 +23,21 @@ const (
 )
 
 type Authorizer struct {
-	mappings atomic.Value
-	insecure bool
+	mappings        atomic.Value
+	insecure        bool
+	anonymousReader atomic.Bool
 }
 
-func NewAuthorizer(mappings []config.RoleMapping, insecure bool) *Authorizer {
+func NewAuthorizer(mappings []config.RoleMapping, insecure, anonymousReader bool) *Authorizer {
 	a := &Authorizer{insecure: insecure}
 	a.mappings.Store(mappings)
+	a.anonymousReader.Store(anonymousReader)
 	return a
 }
-func (a *Authorizer) Reload(mappings []config.RoleMapping) { a.mappings.Store(mappings) }
+func (a *Authorizer) Reload(mappings []config.RoleMapping, anonymousReader bool) {
+	a.mappings.Store(mappings)
+	a.anonymousReader.Store(anonymousReader)
+}
 func roleValue(role string) Role {
 	switch strings.ToLower(role) {
 	case "reader":
@@ -86,6 +91,8 @@ func (a *Authorizer) Middleware(next http.Handler) http.Handler {
 			role = RoleAdmin
 		} else if r.TLS != nil && len(r.TLS.VerifiedChains) > 0 {
 			role = a.role(r.TLS.VerifiedChains[0][0])
+		} else if a.anonymousReader.Load() {
+			role = RoleReader
 		}
 		if role < requiredRole(r.URL.Path) {
 			http.Error(w, "client certificate is not authorized for this procedure", http.StatusForbidden)
@@ -110,7 +117,11 @@ func TLSConfig(cfg config.TLS) (*tls.Config, error) {
 			return nil, fmt.Errorf("client CA %q contains no certificates", file)
 		}
 	}
-	return &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}, ClientCAs: pool, ClientAuth: tls.RequireAndVerifyClientCert}, nil
+	clientAuth := tls.RequireAndVerifyClientCert
+	if cfg.AllowAnonymousReader {
+		clientAuth = tls.VerifyClientCertIfGiven
+	}
+	return &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}, ClientCAs: pool, ClientAuth: clientAuth}, nil
 }
 
 var osReadFile = func(name string) ([]byte, error) { return os.ReadFile(name) }

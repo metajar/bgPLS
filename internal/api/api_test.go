@@ -130,13 +130,13 @@ func TestUIRequiresReader(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	handler := NewHandler(s, NoopPeerManager{}, "test", time.Now(), NewAuthorizer(nil, false))
+	handler := NewHandler(s, NoopPeerManager{}, "test", time.Now(), NewAuthorizer(nil, false, false))
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/", nil))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("unauthenticated ui status = %d", rec.Code)
 	}
-	open := NewHandler(s, NoopPeerManager{}, "test", time.Now(), NewAuthorizer(nil, true))
+	open := NewHandler(s, NoopPeerManager{}, "test", time.Now(), NewAuthorizer(nil, true, false))
 	rec = httptest.NewRecorder()
 	open.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/", nil))
 	if rec.Code != http.StatusOK {
@@ -144,8 +144,38 @@ func TestUIRequiresReader(t *testing.T) {
 	}
 }
 
+func TestAnonymousReaderCanOpenUI(t *testing.T) {
+	s, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	handler := NewHandler(s, NoopPeerManager{}, "test", time.Now(), NewAuthorizer(nil, false, true))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ui/", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("anonymous ui status = %d", rec.Code)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/bgpls.v1.TopologyService/GetSummary", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Connect-Protocol-Version", "1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("anonymous summary status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	req = httptest.NewRequest(http.MethodPost, "/bgpls.v1.CollectorService/CreatePeer", bytes.NewBufferString(`{"peer":{"id":"x"}}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Connect-Protocol-Version", "1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("anonymous create peer status = %d", rec.Code)
+	}
+}
+
 func TestSANRoleMapping(t *testing.T) {
-	a := NewAuthorizer([]config.RoleMapping{{Role: "operator", URISANs: []string{"spiffe://example.net/operators/*"}}, {Role: "reader", DNSSANs: []string{"*.readers.example.net"}}}, false)
+	a := NewAuthorizer([]config.RoleMapping{{Role: "operator", URISANs: []string{"spiffe://example.net/operators/*"}}, {Role: "reader", DNSSANs: []string{"*.readers.example.net"}}}, false, false)
 	identity, _ := url.Parse("spiffe://example.net/operators/router-team")
 	if got := a.role(&x509.Certificate{URIs: []*url.URL{identity}}); got != RoleOperator {
 		t.Fatalf("URI SAN role = %v", got)
