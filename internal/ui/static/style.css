@@ -1,0 +1,212 @@
+:root {
+  --bg: #0c1117;
+  --panel: #141b24;
+  --panel-border: #243041;
+  --text: #e8eef6;
+  --muted: #8b98a8;
+  --accent: #4ca3ff;
+  --warn: #f5b942;
+  --danger: #f07178;
+  --chip: #1c2633;
+  --input: #0f1620;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+
+.brand { display: flex; align-items: baseline; gap: 8px; min-width: 8rem; }
+.mark { font-weight: 700; letter-spacing: 0.04em; color: var(--accent); }
+.title { color: var(--muted); }
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.stats .warn { color: var(--warn); }
+.stats .muted { color: var(--muted); }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.field.grow { min-width: 14rem; flex: 1 1 14rem; }
+
+select, input[type="search"], button {
+  height: 30px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  padding: 0 8px;
+}
+
+button {
+  background: var(--chip);
+  cursor: pointer;
+}
+button:hover, select:hover { border-color: #3a4b61; }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  color: var(--muted);
+  user-select: none;
+}
+
+main {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+#cy { width: 100%; height: 100%; }
+
+.panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: min(360px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow: auto;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px 14px 16px;
+  backdrop-filter: blur(10px);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+#panel-close {
+  width: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+dl { margin: 0; }
+dt {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+dd {
+  margin: 2px 0 0;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+dd.list { display: flex; flex-direction: column; gap: 2px; }
+
+.empty, .banner {
+  position: absolute;
+  left: 50%;
+  top: 28%;
+  transform: translateX(-50%);
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 18px 22px;
+  max-width: 28rem;
+}
+.banner {
+  top: 12px;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--panel-border));
+}
+
+.legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0;
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c, #888);
+  box-shadow: 0 0 0 1px #0006;
+}
+.swatch.diamond {
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 900px) {
+  .bar { align-items: stretch; }
+  .controls { margin-left: 0; width: 100%; }
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bgPLS topology</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="mark">bgPLS</span>
+      <span class="title">Topology</span>
+    </div>
+    <div class="stats" id="stats">
+      <span data-stat="revision">rev —</span>
+      <span data-stat="nodes">0 nodes</span>
+      <span data-stat="links">0 links</span>
+      <span data-stat="prefixes">0 prefixes</span>
+      <span data-stat="conflicts" class="warn hidden">0 conflicts</span>
+      <span data-stat="stale" class="muted hidden">0 stale</span>
+    </div>
+    <div class="controls">
+      <label class="field">
+        <span>Domain</span>
+        <select id="domain">
+          <option value="">All domains</option>
+        </select>
+      </label>
+      <label class="field grow">
+        <span>Search</span>
+        <input id="search" type="search" placeholder="Name, router ID, address…" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Layout</span>
+        <select id="layout">
+          <option value="cose">Force</option>
+          <option value="breadthfirst">Tree</option>
+          <option value="circle">Circle</option>
+          <option value="grid">Grid</option>
+        </select>
+      </label>
+      <label class="check">
+        <input id="stale" type="checkbox">
+        <span>Stale</span>
+      </label>
+      <button id="fit" type="button">Fit</button>
+      <button id="reload" type="button">Reload</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="cy" role="img" aria-label="Network topology canvas"></div>
+    <aside id="panel" class="panel hidden" hidden>
+      <div class="panel-head">
+        <h2 id="panel-title">Selection</h2>
+        <button id="panel-close" type="button" aria-label="Close details">×</button>
+      </div>
+      <dl id="panel-body"></dl>
+    </aside>
+    <div id="empty" class="empty hidden" hidden>
+      <p>No topology yet.</p>
+      <p class="muted">Nodes and links appear here after a BGP-LS peer advertises them.</p>
+    </div>
+    <div id="error" class="banner hidden" hidden></div>
+    <ul id="legend" class="legend"></ul>
+  </main>
+
+  <script src="vendor/cytoscape.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

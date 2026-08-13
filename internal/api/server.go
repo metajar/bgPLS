@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/bgpls/bgpls/gen/bgpls/v1/bgplsv1connect"
 	"github.com/bgpls/bgpls/internal/store"
+	"github.com/bgpls/bgpls/internal/ui"
 )
 
 type Services struct {
@@ -31,6 +32,14 @@ func NewHandler(s *store.Store, peers PeerManager, version string, started time.
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"SERVING"}`))
+	})
+	mux.Handle("/ui/", http.StripPrefix("/ui/", ui.Handler()))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, "/ui/", http.StatusFound)
 	})
 	var out http.Handler = mux
 	if authorizer != nil {

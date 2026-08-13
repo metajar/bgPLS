@@ -115,7 +115,7 @@ func serve(args []string) error {
 	}
 	if cfg.API.TLS.DevelopmentInsecure {
 		go func() {
-			slog.Info("API listening without TLS for development", "address", cfg.API.Listen)
+			slog.Info("API listening without TLS for development", "address", cfg.API.Listen, "ui", "http://"+cfg.API.Listen+"/ui/")
 			errCh <- server.ListenAndServe()
 		}()
 	} else {
@@ -132,7 +132,7 @@ func serve(args []string) error {
 			return err
 		}
 		tlsListener := tls.NewListener(listener, outer)
-		go func() { slog.Info("mTLS API listening", "address", cfg.API.Listen); errCh <- server.Serve(tlsListener) }()
+		go func() { slog.Info("mTLS API listening", "address", cfg.API.Listen, "ui", "https://"+cfg.API.Listen+"/ui/"); errCh <- server.Serve(tlsListener) }()
 		hup := make(chan os.Signal, 1)
 		signal.Notify(hup, syscall.SIGHUP)
 		defer signal.Stop(hup)
