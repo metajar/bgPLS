@@ -173,6 +173,29 @@ dd.list { display: flex; flex-direction: column; gap: 2px; }
   border-color: color-mix(in srgb, var(--danger) 40%, var(--panel-border));
 }
 
+.path-panel {
+  left: 12px;
+  right: auto;
+  top: 12px;
+  width: min(280px, calc(100% - 24px));
+  max-height: calc(100% - 72px);
+}
+.path-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.path-fields input[type="text"] {
+  height: 30px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  padding: 0 8px;
+}
+#path-result { margin: 10px 0 0; white-space: pre-wrap; }
+
 .legend {
   position: absolute;
   left: 12px;

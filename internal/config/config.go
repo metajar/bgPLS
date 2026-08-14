@@ -13,12 +13,13 @@ import (
 )
 
 type Config struct {
-	DataDir   string    `yaml:"data_dir"`
-	API       API       `yaml:"api"`
-	BGP       BGP       `yaml:"bgp"`
-	Retention Retention `yaml:"retention"`
-	Domains   []Domain  `yaml:"domains"`
-	Peers     []Peer    `yaml:"peers"`
+	DataDir     string      `yaml:"data_dir"`
+	API         API         `yaml:"api"`
+	BGP         BGP         `yaml:"bgp"`
+	Retention   Retention   `yaml:"retention"`
+	Utilization Utilization `yaml:"utilization"`
+	Domains     []Domain    `yaml:"domains"`
+	Peers       []Peer      `yaml:"peers"`
 }
 type API struct {
 	Listen        string        `yaml:"listen"`
@@ -49,6 +50,12 @@ type Retention struct {
 	DurationText string        `yaml:"duration"`
 	MaxBytes     uint64        `yaml:"max_bytes"`
 }
+type Utilization struct {
+	StaleAfter     time.Duration `yaml:"-"`
+	StaleAfterText string        `yaml:"stale_after"`
+	SweepAfter     time.Duration `yaml:"-"`
+	SweepAfterText string        `yaml:"sweep_after"`
+}
 type Domain struct {
 	ID          string `yaml:"id"`
 	Name        string `yaml:"name"`
@@ -72,7 +79,7 @@ type Peer struct {
 }
 
 func Default() Config {
-	return Config{DataDir: "./data", API: API{Listen: "127.0.0.1:7443", MetricsListen: "127.0.0.1:9090"}, BGP: BGP{RouterID: "127.0.0.1", ListenPort: -1}, Retention: Retention{Duration: 30 * 24 * time.Hour, DurationText: "720h", MaxBytes: 50 << 30}}
+	return Config{DataDir: "./data", API: API{Listen: "127.0.0.1:7443", MetricsListen: "127.0.0.1:9090"}, BGP: BGP{RouterID: "127.0.0.1", ListenPort: -1}, Retention: Retention{Duration: 30 * 24 * time.Hour, DurationText: "720h", MaxBytes: 50 << 30}, Utilization: Utilization{StaleAfter: 45 * time.Second, StaleAfterText: "45s", SweepAfter: 10 * time.Minute, SweepAfterText: "10m"}}
 }
 
 func Load(path string) (Config, error) {
@@ -88,6 +95,18 @@ func Load(path string) (Config, error) {
 		cfg.Retention.Duration, err = time.ParseDuration(cfg.Retention.DurationText)
 		if err != nil {
 			return Config{}, fmt.Errorf("retention.duration: %w", err)
+		}
+	}
+	if cfg.Utilization.StaleAfterText != "" {
+		cfg.Utilization.StaleAfter, err = time.ParseDuration(cfg.Utilization.StaleAfterText)
+		if err != nil {
+			return Config{}, fmt.Errorf("utilization.stale_after: %w", err)
+		}
+	}
+	if cfg.Utilization.SweepAfterText != "" {
+		cfg.Utilization.SweepAfter, err = time.ParseDuration(cfg.Utilization.SweepAfterText)
+		if err != nil {
+			return Config{}, fmt.Errorf("utilization.sweep_after: %w", err)
 		}
 	}
 	if !filepath.IsAbs(cfg.DataDir) {

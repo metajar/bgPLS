@@ -25,6 +25,7 @@ ROUTERS: dict[int, list[tuple[str, str, str, int, bool]]] = {
         ("eth2", "10.1.12.1/30", "fd00:1:12::1/64", 10, True),
         ("eth3", "10.1.13.1/30", "fd00:1:13::1/64", 10, True),
         ("eth4", "10.1.17.1/30", "fd00:1:17::1/64", 25, True),
+        ("eth5", "10.10.1.1/24", "", 0, False),
     ],
     2: [
         ("eth1", "10.0.2.2/30", "", 0, False),
@@ -86,6 +87,9 @@ SRL_NODES: list[dict] = [
         "isis": [
             ("ethernet-1/1", "10.1.80.2/30", "fd00:1:80::2/64", 25, "to-r8"),
             ("ethernet-1/2", "10.1.90.2/30", "fd00:1:90::2/64", 20, "to-srl1"),
+        ],
+        "host": [
+            ("ethernet-1/3", "10.10.2.1/24", "", "tgen2"),
         ],
     },
 ]
@@ -232,14 +236,19 @@ def render_srl(node: dict) -> str:
     lo = LOOPBACKS[n]
     lo6 = LOOPBACKS_V6[n]
     isis_ifaces = node["isis"]
+    host_ifaces = node.get("host", [])
     inst = "set / network-instance default protocols isis instance 1"
 
     lines = [f"# {name}: Nokia SR Linux IS-IS speaker (BGP-LS is not on 7220 IXR-D)"]
     for iface, ipv4, ipv6, _metric, te_name in isis_ifaces:
         lines.extend(srl_set_iface(iface, ipv4, ipv6, te_name.replace("to-", "IS-IS to ")))
+    for iface, ipv4, ipv6, te_name in host_ifaces:
+        lines.extend(srl_set_iface(iface, ipv4, ipv6, te_name))
     lines.extend(srl_set_iface("system0", f"{lo}/32", f"{lo6}/128", "system loopback"))
     lines.append(f"set / network-instance default router-id {lo}")
     for iface, _ipv4, _ipv6, _metric, _te_name in isis_ifaces:
+        lines.append(f"set / network-instance default interface {iface}.0")
+    for iface, _ipv4, _ipv6, _te_name in host_ifaces:
         lines.append(f"set / network-instance default interface {iface}.0")
     lines.extend(
         [
@@ -256,6 +265,8 @@ def render_srl(node: dict) -> str:
     )
     for iface, _ipv4, _ipv6, metric, _te_name in isis_ifaces:
         lines.extend(srl_set_isis_iface(iface, metric))
+    for iface, _ipv4, _ipv6, _te_name in host_ifaces:
+        lines.extend(srl_set_isis_iface(iface, 0, passive=True))
     lines.extend(srl_set_isis_iface("system0", 0, passive=True))
     lines.append("")
     return "\n".join(lines)

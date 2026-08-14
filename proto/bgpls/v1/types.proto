@@ -126,6 +126,41 @@ message Link {
   string remote_ipv4_address = 20;
   string local_ipv6_address = 21;
   string remote_ipv6_address = 22;
+  LinkUtilization utilization = 23;
+}
+
+// LinkUtilization is a fast-changing overlay joined to a directed BGP-LS link.
+// It is not part of the revisioned topology event history.
+message LinkUtilization {
+  string link_id = 1;
+  uint64 in_bps = 2;
+  uint64 out_bps = 3;
+  uint64 speed_bps = 4;
+  double utilization = 5;
+  bool utilization_known = 6;
+  uint64 available_bps = 7;
+  google.protobuf.Timestamp observed_at = 8;
+  google.protobuf.Timestamp stale_at = 9;
+}
+
+message InterfaceUtilization {
+  string device = 1;
+  string interface_name = 2;
+  repeated string ipv4_addresses = 3;
+  repeated string ipv6_addresses = 4;
+  uint64 speed_bps = 5;
+  uint64 in_bps = 6;
+  uint64 out_bps = 7;
+  google.protobuf.Timestamp observed_at = 8;
+}
+
+message UncorrelatedInterface {
+  string device = 1;
+  string interface_name = 2;
+  repeated string ipv4_addresses = 3;
+  repeated string ipv6_addresses = 4;
+  string reason = 5;
+  google.protobuf.Timestamp observed_at = 6;
 }
 
 message Prefix {

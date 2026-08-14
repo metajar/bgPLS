@@ -33,6 +33,12 @@
     empty: document.getElementById("empty"),
     error: document.getElementById("error"),
     legend: document.getElementById("legend"),
+    pathSrc: document.getElementById("path-src"),
+    pathDst: document.getElementById("path-dst"),
+    pathMetric: document.getElementById("path-metric"),
+    pathMinbw: document.getElementById("path-minbw"),
+    pathCompute: document.getElementById("path-compute"),
+    pathResult: document.getElementById("path-result"),
   };
 
   let cy;
@@ -102,6 +108,39 @@
     return FRESHNESS[v] || v || "Unknown";
   }
 
+  function utilClass(u) {
+    if (!u || !u.utilizationKnown) return "util-unknown";
+    const stale = u.staleAt && Date.parse(u.staleAt) < Date.now();
+    if (stale) return "util-unknown";
+    const r = Number(u.utilization) || 0;
+    if (r > 0.8) return "util-high";
+    if (r >= 0.4) return "util-mid";
+    return "util-low";
+  }
+
+  function formatBits(bps) {
+    const n = num(bps);
+    if (!n) return "0";
+    const units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"];
+    let v = n;
+    let i = 0;
+    while (v >= 1000 && i < units.length - 1) {
+      v /= 1000;
+      i++;
+    }
+    return `${v >= 10 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`;
+  }
+
+  function parseBw(s) {
+    s = (s || "").trim().toUpperCase();
+    if (!s) return 0;
+    const m = s.match(/^([0-9.]+)\s*([KMG])?$/);
+    if (!m) return 0;
+    const n = Number(m[1]);
+    const mult = m[2] === "G" ? 1e9 : m[2] === "M" ? 1e6 : m[2] === "K" ? 1e3 : 1;
+    return Math.round(n * mult);
+  }
+
   function formatBps(bytesPerSecond) {
     const bps = num(bytesPerSecond) * 8;
     if (!bps) return "";
@@ -143,6 +182,10 @@
       const stale = l.meta && l.meta.freshness && l.meta.freshness !== "FRESHNESS_ACTIVE";
       const conflicts = l.meta && l.meta.conflicts && l.meta.conflicts.length > 0;
       const metric = num(l.igpMetric);
+      const u = l.utilization || {};
+      const uClass = utilClass(u);
+      const speed = num(u.speedBps);
+      const width = speed > 25e9 ? 3.2 : speed > 1e9 ? 2.2 : 1.6;
       elements.push({
         data: {
           id: l.meta.id,
@@ -153,8 +196,9 @@
           stale,
           conflicts,
           entity: l,
+          width,
         },
-        classes: [stale ? "stale" : "", conflicts ? "conflict" : ""].filter(Boolean).join(" "),
+        classes: [stale ? "stale" : "", conflicts ? "conflict" : "", uClass].filter(Boolean).join(" "),
       });
     }
     return elements;
@@ -201,7 +245,7 @@
       {
         selector: "edge",
         style: {
-          width: 1.4,
+          width: "data(width)",
           "curve-style": "bezier",
           "control-point-step-size": 24,
           "target-arrow-shape": "triangle",
@@ -224,8 +268,24 @@
         style: { "line-color": "#f5b942", "target-arrow-color": "#f5b942" },
       },
       {
-        selector: "edge:selected",
-        style: { width: 3, "line-color": "#e8eef6", "target-arrow-color": "#e8eef6" },
+        selector: "edge.util-unknown",
+        style: { "line-color": "#64748b", "target-arrow-color": "#64748b" },
+      },
+      {
+        selector: "edge.util-low",
+        style: { "line-color": "#34d399", "target-arrow-color": "#34d399" },
+      },
+      {
+        selector: "edge.util-mid",
+        style: { "line-color": "#fbbf24", "target-arrow-color": "#fbbf24" },
+      },
+      {
+        selector: "edge.util-high",
+        style: { "line-color": "#f87171", "target-arrow-color": "#f87171" },
+      },
+      {
+        selector: "edge.path",
+        style: { width: 4, "line-color": "#e8eef6", "target-arrow-color": "#e8eef6" },
       },
       {
         selector: "edge.dim",
@@ -317,6 +377,11 @@
         row("Admin groups", entity.adminGroups),
         row("SRLGs", entity.srlgs),
         row("Adjacency SIDs", entity.adjacencySids),
+        row("Utilization", entity.utilization && entity.utilization.utilizationKnown
+          ? `${Math.round((Number(entity.utilization.utilization) || 0) * 100)}%  in ${formatBits(entity.utilization.inBps)} / out ${formatBits(entity.utilization.outBps)}`
+          : "unknown"),
+        row("Available", entity.utilization ? formatBits(entity.utilization.availableBps) : ""),
+        row("Observed", entity.utilization && entity.utilization.observedAt),
         row("Sources", m.sourcePeerIds),
         row("Conflicts", (m.conflicts || []).map((c) => `${c.field}: ${c.selectedValue} vs ${c.rejectedValue}`)),
       ].join("");
@@ -385,7 +450,10 @@
     const items = [...seen.entries()].map(
       ([label, color]) => `<li><span class="swatch" style="--c:${color}"></span>${escapeHtml(label)}</li>`
     );
-    items.push('<li><span class="swatch diamond" style="--c:#94a3b8"></span>Pseudonode</li>');
+    items.push('<li><span class="swatch" style="--c:#34d399"></span>Util &lt; 40%</li>');
+    items.push('<li><span class="swatch" style="--c:#fbbf24"></span>Util 40–80%</li>');
+    items.push('<li><span class="swatch" style="--c:#f87171"></span>Util &gt; 80%</li>');
+    items.push('<li><span class="swatch" style="--c:#64748b"></span>Util unknown</li>');
     els.legend.innerHTML = items.join("");
   }
 
@@ -435,6 +503,83 @@
     }
     ensureCy(elements, relayout);
     applySearch();
+    fillPathNodes(nodes);
+  }
+
+  function fillPathNodes(nodes) {
+    if (!els.pathSrc) return;
+    const opts = nodes.map((n) => {
+      const id = n.meta && n.meta.id;
+      const label = nodeLabel(n);
+      return `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`;
+    });
+    const src = els.pathSrc.value;
+    const dst = els.pathDst.value;
+    els.pathSrc.innerHTML = opts.join("");
+    els.pathDst.innerHTML = opts.join("");
+    if ([...els.pathSrc.options].some((o) => o.value === src)) els.pathSrc.value = src;
+    if ([...els.pathDst.options].some((o) => o.value === dst)) els.pathDst.value = dst;
+    if (!els.pathSrc.value && opts.length) els.pathSrc.selectedIndex = 0;
+    if (!els.pathDst.value && opts.length > 1) els.pathDst.selectedIndex = Math.min(1, opts.length - 1);
+  }
+
+  async function computePath() {
+    if (!els.pathSrc.value || !els.pathDst.value) return;
+    const domain = els.domain.value || "core";
+    const constraints = {};
+    const minBw = parseBw(els.pathMinbw.value);
+    if (minBw) constraints.minAvailableBps = String(minBw);
+    els.pathResult.textContent = "Computing…";
+    try {
+      const msg = await connect("/bgpls.v1.PathService/ComputePaths", {
+        domainId: domain,
+        source: els.pathSrc.value,
+        destination: els.pathDst.value,
+        metric: els.pathMetric.value,
+        constraints,
+        maxPaths: 1,
+      });
+      if (!cy) return;
+      cy.edges().removeClass("path");
+      const paths = msg.paths || [];
+      if (!paths.length) {
+        els.pathResult.textContent = msg.explanation || "No path satisfies constraints";
+        return;
+      }
+      const path = paths[0];
+      const hopIds = [];
+      for (const hop of path.hops || []) {
+        const id = hop.outgoingLink && hop.outgoingLink.meta && hop.outgoingLink.meta.id;
+        if (id) {
+          hopIds.push(id);
+          const edge = cy.getElementById(id);
+          if (edge) edge.addClass("path");
+        }
+      }
+      const avail = formatBits(path.bottleneckAvailableBps);
+      const stale = path.usedStaleData ? " (stale data used)" : "";
+      els.pathResult.textContent = `metric ${path.totalMetric || 0}  bottleneck ${avail}${stale}\n${hopIds.length} hops`;
+    } catch (err) {
+      els.pathResult.textContent = err.message || String(err);
+    }
+  }
+
+  async function pollUtilization() {
+    if (!cy) return;
+    try {
+      const msg = await connect("/bgpls.v1.EnrichmentService/GetLinkUtilization", {});
+      for (const u of msg.links || []) {
+        const edge = cy.getElementById(u.linkId);
+        if (!edge || !edge.length) continue;
+        const entity = edge.data("entity") || {};
+        entity.utilization = u;
+        edge.data("entity", entity);
+        edge.removeClass("util-unknown util-low util-mid util-high");
+        edge.addClass(utilClass(u));
+      }
+    } catch {
+      // overlay may be empty during startup
+    }
   }
 
   async function refresh(relayout) {
@@ -469,6 +614,7 @@
   });
   els.reload.addEventListener("click", () => refresh(true));
   els.panelClose.addEventListener("click", closePanel);
+  if (els.pathCompute) els.pathCompute.addEventListener("click", computePath);
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") closePanel();
     if (ev.key === "/" && document.activeElement !== els.search) {
@@ -479,5 +625,6 @@
 
   refresh(true);
   pollTimer = window.setInterval(poll, POLL_MS);
+  window.setInterval(pollUtilization, 2000);
   window.addEventListener("beforeunload", () => window.clearInterval(pollTimer));
 })();

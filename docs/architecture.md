@@ -16,8 +16,11 @@ deterministic reconciliation -> canonical node/link/prefix mutations
           +--> revision-scoped graph and prefix indexes
                          |
                          v
-             ConnectRPC/gRPC APIs and CLI
+             ConnectRPC/gRPC APIs, CLI, and /ui
 ```
+
+Live interface utilization is a separate overlay (see
+[utilization.md](utilization.md)). Samples never create topology revisions.
 
 Stable IDs hash normalized BGP-LS key descriptors, including domain, protocol,
 instance identifier, router descriptors, link descriptors, MT-ID, and prefix.

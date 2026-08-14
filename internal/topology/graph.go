@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 
 	bgplsv1 "github.com/bgpls/bgpls/gen/bgpls/v1"
 	"google.golang.org/protobuf/proto"
@@ -95,7 +96,22 @@ func metric(link *bgplsv1.Link, metric bgplsv1.PathMetric) (uint64, bool) {
 	}
 }
 
-func eligible(l *bgplsv1.Link, c *bgplsv1.PathConstraints) bool {
+func failStale(c *bgplsv1.PathConstraints) bool {
+	return c != nil && c.StalePolicy == bgplsv1.StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_FAIL_LINK
+}
+
+func linkAvailability(l *bgplsv1.Link, now time.Time) (available uint64, known, stale bool) {
+	u := l.GetUtilization()
+	if u == nil || !u.UtilizationKnown {
+		return 0, false, true
+	}
+	if u.StaleAt != nil && !now.Before(u.StaleAt.AsTime()) {
+		return u.AvailableBps, true, true
+	}
+	return u.AvailableBps, true, false
+}
+
+func eligible(l *bgplsv1.Link, c *bgplsv1.PathConstraints, now time.Time, staleUsed *bool) bool {
 	if c == nil {
 		return true
 	}
@@ -129,10 +145,49 @@ func eligible(l *bgplsv1.Link, c *bgplsv1.PathConstraints) bool {
 			return false
 		}
 	}
+	srlg := map[uint32]bool{}
+	for _, v := range l.Srlgs {
+		srlg[v] = true
+	}
+	for _, v := range c.ExcludeSrlgs {
+		if srlg[v] {
+			return false
+		}
+	}
+	if c.MinAvailableBps > 0 {
+		avail, known, stale := linkAvailability(l, now)
+		if !known || stale {
+			if failStale(c) {
+				return false
+			}
+			if staleUsed != nil {
+				*staleUsed = true
+			}
+		} else if avail < c.MinAvailableBps {
+			return false
+		}
+	}
 	return true
 }
 
-func (g *Graph) shortest(source, destination string, metricType bgplsv1.PathMetric, c *bgplsv1.PathConstraints) ([]*bgplsv1.Link, uint64, error) {
+func reconstruct(prev map[string]*bgplsv1.Link, source, destination string) ([]*bgplsv1.Link, error) {
+	var reversed []*bgplsv1.Link
+	for current := destination; current != source; {
+		link := prev[current]
+		if link == nil {
+			return nil, ErrNoPath
+		}
+		reversed = append(reversed, link)
+		current = link.LocalNodeId
+	}
+	path := make([]*bgplsv1.Link, len(reversed))
+	for i := range reversed {
+		path[len(reversed)-1-i] = reversed[i]
+	}
+	return path, nil
+}
+
+func (g *Graph) shortest(source, destination string, metricType bgplsv1.PathMetric, c *bgplsv1.PathConstraints, now time.Time, staleUsed *bool) ([]*bgplsv1.Link, uint64, error) {
 	if g.nodes[source] == nil || g.nodes[destination] == nil {
 		return nil, 0, fmt.Errorf("%w: source or destination does not exist in the active graph", ErrNoPath)
 	}
@@ -149,7 +204,7 @@ func (g *Graph) shortest(source, destination string, metricType bgplsv1.PathMetr
 			break
 		}
 		for _, link := range g.adj[item.id] {
-			if !eligible(link, c) {
+			if !eligible(link, c, now, staleUsed) {
 				continue
 			}
 			weight, ok := metric(link, metricType)
@@ -172,23 +227,114 @@ func (g *Graph) shortest(source, destination string, metricType bgplsv1.PathMetr
 	if !ok {
 		return nil, 0, ErrNoPath
 	}
-	var reversed []*bgplsv1.Link
-	for current := destination; current != source; {
-		link := prev[current]
-		if link == nil {
-			return nil, 0, ErrNoPath
+	path, err := reconstruct(prev, source, destination)
+	return path, total, err
+}
+
+type wideItem struct {
+	id         string
+	bottleneck uint64
+	igp        uint64
+	index      int
+}
+type wideQueue []*wideItem
+
+func (p wideQueue) Len() int { return len(p) }
+func (p wideQueue) Less(i, j int) bool {
+	if p[i].bottleneck != p[j].bottleneck {
+		return p[i].bottleneck > p[j].bottleneck
+	}
+	if p[i].igp != p[j].igp {
+		return p[i].igp < p[j].igp
+	}
+	return p[i].id < p[j].id
+}
+func (p wideQueue) Swap(i, j int) { p[i], p[j] = p[j], p[i]; p[i].index = i; p[j].index = j }
+func (p *wideQueue) Push(x any) {
+	item := x.(*wideItem)
+	item.index = len(*p)
+	*p = append(*p, item)
+}
+func (p *wideQueue) Pop() any {
+	old := *p
+	n := len(old)
+	item := old[n-1]
+	*p = old[:n-1]
+	return item
+}
+
+func linkAvailableForMetric(l *bgplsv1.Link, c *bgplsv1.PathConstraints, now time.Time, staleUsed *bool) (uint64, bool) {
+	avail, known, stale := linkAvailability(l, now)
+	if known && !stale {
+		return avail, true
+	}
+	if failStale(c) {
+		return 0, false
+	}
+	if staleUsed != nil {
+		*staleUsed = true
+	}
+	return math.MaxUint64, true
+}
+
+func (g *Graph) widest(source, destination string, c *bgplsv1.PathConstraints, now time.Time, staleUsed *bool) ([]*bgplsv1.Link, uint64, error) {
+	if g.nodes[source] == nil || g.nodes[destination] == nil {
+		return nil, 0, fmt.Errorf("%w: source or destination does not exist in the active graph", ErrNoPath)
+	}
+	type score struct {
+		bw  uint64
+		igp uint64
+	}
+	best := map[string]score{source: {bw: math.MaxUint64, igp: 0}}
+	prev := map[string]*bgplsv1.Link{}
+	q := wideQueue{&wideItem{id: source, bottleneck: math.MaxUint64}}
+	heap.Init(&q)
+	for q.Len() > 0 {
+		item := heap.Pop(&q).(*wideItem)
+		known := best[item.id]
+		if item.bottleneck != known.bw || item.igp != known.igp {
+			continue
 		}
-		reversed = append(reversed, link)
-		current = link.LocalNodeId
+		if item.id == destination {
+			break
+		}
+		for _, link := range g.adj[item.id] {
+			if !eligible(link, c, now, staleUsed) {
+				continue
+			}
+			avail, ok := linkAvailableForMetric(link, c, now, staleUsed)
+			if !ok {
+				continue
+			}
+			igp, ok := metric(link, bgplsv1.PathMetric_PATH_METRIC_IGP)
+			if !ok {
+				continue
+			}
+			nextBW := item.bottleneck
+			if avail < nextBW {
+				nextBW = avail
+			}
+			nextIGP := item.igp + igp
+			old, seen := best[link.RemoteNodeId]
+			better := !seen || nextBW > old.bw || (nextBW == old.bw && (nextIGP < old.igp || (nextIGP == old.igp && link.GetMeta().GetId() < prev[link.RemoteNodeId].GetMeta().GetId())))
+			if better {
+				best[link.RemoteNodeId] = score{bw: nextBW, igp: nextIGP}
+				prev[link.RemoteNodeId] = link
+				heap.Push(&q, &wideItem{id: link.RemoteNodeId, bottleneck: nextBW, igp: nextIGP})
+			}
+		}
 	}
-	path := make([]*bgplsv1.Link, len(reversed))
-	for i := range reversed {
-		path[len(reversed)-1-i] = reversed[i]
+	got, ok := best[destination]
+	if !ok {
+		return nil, 0, ErrNoPath
 	}
-	return path, total, nil
+	path, err := reconstruct(prev, source, destination)
+	return path, got.igp, err
 }
 
 func (g *Graph) Compute(source, destination string, metricType bgplsv1.PathMetric, c *bgplsv1.PathConstraints) (*bgplsv1.ComputedPath, error) {
+	now := time.Now().UTC()
+	var usedStale bool
 	waypoints := []string{source}
 	if c != nil {
 		waypoints = append(waypoints, c.IncludeNodeIds...)
@@ -197,28 +343,52 @@ func (g *Graph) Compute(source, destination string, metricType bgplsv1.PathMetri
 	var links []*bgplsv1.Link
 	var total uint64
 	for i := 0; i < len(waypoints)-1; i++ {
-		segment, cost, err := g.shortest(waypoints[i], waypoints[i+1], metricType, c)
+		var segment []*bgplsv1.Link
+		var cost uint64
+		var err error
+		if metricType == bgplsv1.PathMetric_PATH_METRIC_AVAILABLE_BW {
+			segment, cost, err = g.widest(waypoints[i], waypoints[i+1], c, now, &usedStale)
+		} else {
+			segment, cost, err = g.shortest(waypoints[i], waypoints[i+1], metricType, c, now, &usedStale)
+		}
 		if err != nil {
 			return nil, err
 		}
 		links = append(links, segment...)
 		total += cost
 	}
-	result := &bgplsv1.ComputedPath{TotalMetric: total, BottleneckBandwidthBytesPerSecond: math.MaxFloat64}
+	result := &bgplsv1.ComputedPath{TotalMetric: total, BottleneckBandwidthBytesPerSecond: math.MaxFloat64, UsedStaleData: usedStale}
 	current := source
+	var bottleneckAvail uint64 = math.MaxUint64
+	var sawAvail bool
 	for i, link := range links {
 		result.Hops = append(result.Hops, &bgplsv1.PathHop{Index: uint32(i), Node: g.nodes[current], OutgoingLink: link})
 		result.TotalDelayMicroseconds += link.DelayMicroseconds
 		if link.ReservableBandwidthBytesPerSecond < result.BottleneckBandwidthBytesPerSecond {
 			result.BottleneckBandwidthBytesPerSecond = link.ReservableBandwidthBytesPerSecond
 		}
+		avail, known, stale := linkAvailability(link, now)
+		if known && !stale {
+			sawAvail = true
+			if avail < bottleneckAvail {
+				bottleneckAvail = avail
+			}
+		} else {
+			result.UsedStaleData = true
+		}
 		current = link.RemoteNodeId
 	}
 	result.Hops = append(result.Hops, &bgplsv1.PathHop{Index: uint32(len(links)), Node: g.nodes[current]})
 	if len(links) == 0 {
 		result.BottleneckBandwidthBytesPerSecond = 0
-	} else if result.BottleneckBandwidthBytesPerSecond == math.MaxFloat64 {
-		result.BottleneckBandwidthBytesPerSecond = 0
+		result.BottleneckAvailableBps = 0
+	} else {
+		if result.BottleneckBandwidthBytesPerSecond == math.MaxFloat64 {
+			result.BottleneckBandwidthBytesPerSecond = 0
+		}
+		if sawAvail {
+			result.BottleneckAvailableBps = bottleneckAvail
+		}
 	}
 	return result, nil
 }
@@ -248,7 +418,14 @@ func (g *Graph) ComputeMany(source, destination string, metricType bgplsv1.PathM
 		}
 		next.AvoidLinkIds = append(next.AvoidLinkIds, hop.OutgoingLink.GetMeta().GetId())
 		candidate, err := g.Compute(source, destination, metricType, next)
-		if err != nil || candidate.TotalMetric != first.TotalMetric {
+		if err != nil {
+			continue
+		}
+		same := candidate.TotalMetric == first.TotalMetric
+		if metricType == bgplsv1.PathMetric_PATH_METRIC_AVAILABLE_BW {
+			same = candidate.BottleneckAvailableBps == first.BottleneckAvailableBps && candidate.TotalMetric == first.TotalMetric
+		}
+		if !same {
 			continue
 		}
 		key := pathKey(candidate)

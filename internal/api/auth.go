@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +14,30 @@ import (
 
 	"github.com/bgpls/bgpls/internal/config"
 )
+
+var errOverlayMissing = errors.New("utilization overlay is not configured")
+
+type ctxKey int
+
+const roleContextKey ctxKey = 1
+
+func RoleFrom(ctx context.Context) Role {
+	v, _ := ctx.Value(roleContextKey).(Role)
+	return v
+}
+
+func roleLabel(role Role) string {
+	switch role {
+	case RoleAdmin:
+		return "admin"
+	case RoleOperator:
+		return "operator"
+	case RoleReader:
+		return "reader"
+	default:
+		return "unknown"
+	}
+}
 
 type Role int
 
@@ -79,7 +105,7 @@ func requiredRole(procedure string) Role {
 	if strings.Contains(procedure, "CreatePeer") || strings.Contains(procedure, "UpdatePeer") || strings.Contains(procedure, "DeletePeer") || strings.Contains(procedure, "ImportPeerConfig") || strings.Contains(procedure, "ExportPeerConfig") {
 		return RoleAdmin
 	}
-	if strings.Contains(procedure, "SetPeerAdminState") || strings.Contains(procedure, "ResetPeer") {
+	if strings.Contains(procedure, "SetPeerAdminState") || strings.Contains(procedure, "ResetPeer") || strings.Contains(procedure, "ReportInterfaceUtilization") {
 		return RoleOperator
 	}
 	return RoleReader
@@ -98,7 +124,7 @@ func (a *Authorizer) Middleware(next http.Handler) http.Handler {
 			http.Error(w, "client certificate is not authorized for this procedure", http.StatusForbidden)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), roleContextKey, role)))
 	})
 }
 

@@ -812,6 +812,7 @@ type Link struct {
 	RemoteIpv4Address                 string                 `protobuf:"bytes,20,opt,name=remote_ipv4_address,json=remoteIpv4Address,proto3" json:"remote_ipv4_address,omitempty"`
 	LocalIpv6Address                  string                 `protobuf:"bytes,21,opt,name=local_ipv6_address,json=localIpv6Address,proto3" json:"local_ipv6_address,omitempty"`
 	RemoteIpv6Address                 string                 `protobuf:"bytes,22,opt,name=remote_ipv6_address,json=remoteIpv6Address,proto3" json:"remote_ipv6_address,omitempty"`
+	Utilization                       *LinkUtilization       `protobuf:"bytes,23,opt,name=utilization,proto3" json:"utilization,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -1000,6 +1001,307 @@ func (x *Link) GetRemoteIpv6Address() string {
 	return ""
 }
 
+func (x *Link) GetUtilization() *LinkUtilization {
+	if x != nil {
+		return x.Utilization
+	}
+	return nil
+}
+
+// LinkUtilization is a fast-changing overlay joined to a directed BGP-LS link.
+// It is not part of the revisioned topology event history.
+type LinkUtilization struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	LinkId           string                 `protobuf:"bytes,1,opt,name=link_id,json=linkId,proto3" json:"link_id,omitempty"`
+	InBps            uint64                 `protobuf:"varint,2,opt,name=in_bps,json=inBps,proto3" json:"in_bps,omitempty"`
+	OutBps           uint64                 `protobuf:"varint,3,opt,name=out_bps,json=outBps,proto3" json:"out_bps,omitempty"`
+	SpeedBps         uint64                 `protobuf:"varint,4,opt,name=speed_bps,json=speedBps,proto3" json:"speed_bps,omitempty"`
+	Utilization      float64                `protobuf:"fixed64,5,opt,name=utilization,proto3" json:"utilization,omitempty"`
+	UtilizationKnown bool                   `protobuf:"varint,6,opt,name=utilization_known,json=utilizationKnown,proto3" json:"utilization_known,omitempty"`
+	AvailableBps     uint64                 `protobuf:"varint,7,opt,name=available_bps,json=availableBps,proto3" json:"available_bps,omitempty"`
+	ObservedAt       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	StaleAt          *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=stale_at,json=staleAt,proto3" json:"stale_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *LinkUtilization) Reset() {
+	*x = LinkUtilization{}
+	mi := &file_bgpls_v1_types_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkUtilization) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkUtilization) ProtoMessage() {}
+
+func (x *LinkUtilization) ProtoReflect() protoreflect.Message {
+	mi := &file_bgpls_v1_types_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkUtilization.ProtoReflect.Descriptor instead.
+func (*LinkUtilization) Descriptor() ([]byte, []int) {
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *LinkUtilization) GetLinkId() string {
+	if x != nil {
+		return x.LinkId
+	}
+	return ""
+}
+
+func (x *LinkUtilization) GetInBps() uint64 {
+	if x != nil {
+		return x.InBps
+	}
+	return 0
+}
+
+func (x *LinkUtilization) GetOutBps() uint64 {
+	if x != nil {
+		return x.OutBps
+	}
+	return 0
+}
+
+func (x *LinkUtilization) GetSpeedBps() uint64 {
+	if x != nil {
+		return x.SpeedBps
+	}
+	return 0
+}
+
+func (x *LinkUtilization) GetUtilization() float64 {
+	if x != nil {
+		return x.Utilization
+	}
+	return 0
+}
+
+func (x *LinkUtilization) GetUtilizationKnown() bool {
+	if x != nil {
+		return x.UtilizationKnown
+	}
+	return false
+}
+
+func (x *LinkUtilization) GetAvailableBps() uint64 {
+	if x != nil {
+		return x.AvailableBps
+	}
+	return 0
+}
+
+func (x *LinkUtilization) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
+func (x *LinkUtilization) GetStaleAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StaleAt
+	}
+	return nil
+}
+
+type InterfaceUtilization struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Device        string                 `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	InterfaceName string                 `protobuf:"bytes,2,opt,name=interface_name,json=interfaceName,proto3" json:"interface_name,omitempty"`
+	Ipv4Addresses []string               `protobuf:"bytes,3,rep,name=ipv4_addresses,json=ipv4Addresses,proto3" json:"ipv4_addresses,omitempty"`
+	Ipv6Addresses []string               `protobuf:"bytes,4,rep,name=ipv6_addresses,json=ipv6Addresses,proto3" json:"ipv6_addresses,omitempty"`
+	SpeedBps      uint64                 `protobuf:"varint,5,opt,name=speed_bps,json=speedBps,proto3" json:"speed_bps,omitempty"`
+	InBps         uint64                 `protobuf:"varint,6,opt,name=in_bps,json=inBps,proto3" json:"in_bps,omitempty"`
+	OutBps        uint64                 `protobuf:"varint,7,opt,name=out_bps,json=outBps,proto3" json:"out_bps,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InterfaceUtilization) Reset() {
+	*x = InterfaceUtilization{}
+	mi := &file_bgpls_v1_types_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InterfaceUtilization) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InterfaceUtilization) ProtoMessage() {}
+
+func (x *InterfaceUtilization) ProtoReflect() protoreflect.Message {
+	mi := &file_bgpls_v1_types_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InterfaceUtilization.ProtoReflect.Descriptor instead.
+func (*InterfaceUtilization) Descriptor() ([]byte, []int) {
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *InterfaceUtilization) GetDevice() string {
+	if x != nil {
+		return x.Device
+	}
+	return ""
+}
+
+func (x *InterfaceUtilization) GetInterfaceName() string {
+	if x != nil {
+		return x.InterfaceName
+	}
+	return ""
+}
+
+func (x *InterfaceUtilization) GetIpv4Addresses() []string {
+	if x != nil {
+		return x.Ipv4Addresses
+	}
+	return nil
+}
+
+func (x *InterfaceUtilization) GetIpv6Addresses() []string {
+	if x != nil {
+		return x.Ipv6Addresses
+	}
+	return nil
+}
+
+func (x *InterfaceUtilization) GetSpeedBps() uint64 {
+	if x != nil {
+		return x.SpeedBps
+	}
+	return 0
+}
+
+func (x *InterfaceUtilization) GetInBps() uint64 {
+	if x != nil {
+		return x.InBps
+	}
+	return 0
+}
+
+func (x *InterfaceUtilization) GetOutBps() uint64 {
+	if x != nil {
+		return x.OutBps
+	}
+	return 0
+}
+
+func (x *InterfaceUtilization) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
+type UncorrelatedInterface struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Device        string                 `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	InterfaceName string                 `protobuf:"bytes,2,opt,name=interface_name,json=interfaceName,proto3" json:"interface_name,omitempty"`
+	Ipv4Addresses []string               `protobuf:"bytes,3,rep,name=ipv4_addresses,json=ipv4Addresses,proto3" json:"ipv4_addresses,omitempty"`
+	Ipv6Addresses []string               `protobuf:"bytes,4,rep,name=ipv6_addresses,json=ipv6Addresses,proto3" json:"ipv6_addresses,omitempty"`
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	ObservedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UncorrelatedInterface) Reset() {
+	*x = UncorrelatedInterface{}
+	mi := &file_bgpls_v1_types_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UncorrelatedInterface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UncorrelatedInterface) ProtoMessage() {}
+
+func (x *UncorrelatedInterface) ProtoReflect() protoreflect.Message {
+	mi := &file_bgpls_v1_types_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UncorrelatedInterface.ProtoReflect.Descriptor instead.
+func (*UncorrelatedInterface) Descriptor() ([]byte, []int) {
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UncorrelatedInterface) GetDevice() string {
+	if x != nil {
+		return x.Device
+	}
+	return ""
+}
+
+func (x *UncorrelatedInterface) GetInterfaceName() string {
+	if x != nil {
+		return x.InterfaceName
+	}
+	return ""
+}
+
+func (x *UncorrelatedInterface) GetIpv4Addresses() []string {
+	if x != nil {
+		return x.Ipv4Addresses
+	}
+	return nil
+}
+
+func (x *UncorrelatedInterface) GetIpv6Addresses() []string {
+	if x != nil {
+		return x.Ipv6Addresses
+	}
+	return nil
+}
+
+func (x *UncorrelatedInterface) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *UncorrelatedInterface) GetObservedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return nil
+}
+
 type Prefix struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Meta              *EntityMeta            `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -1017,7 +1319,7 @@ type Prefix struct {
 
 func (x *Prefix) Reset() {
 	*x = Prefix{}
-	mi := &file_bgpls_v1_types_proto_msgTypes[7]
+	mi := &file_bgpls_v1_types_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1331,7 @@ func (x *Prefix) String() string {
 func (*Prefix) ProtoMessage() {}
 
 func (x *Prefix) ProtoReflect() protoreflect.Message {
-	mi := &file_bgpls_v1_types_proto_msgTypes[7]
+	mi := &file_bgpls_v1_types_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1344,7 @@ func (x *Prefix) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Prefix.ProtoReflect.Descriptor instead.
 func (*Prefix) Descriptor() ([]byte, []int) {
-	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{7}
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Prefix) GetMeta() *EntityMeta {
@@ -1139,7 +1441,7 @@ type Peer struct {
 
 func (x *Peer) Reset() {
 	*x = Peer{}
-	mi := &file_bgpls_v1_types_proto_msgTypes[8]
+	mi := &file_bgpls_v1_types_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1151,7 +1453,7 @@ func (x *Peer) String() string {
 func (*Peer) ProtoMessage() {}
 
 func (x *Peer) ProtoReflect() protoreflect.Message {
-	mi := &file_bgpls_v1_types_proto_msgTypes[8]
+	mi := &file_bgpls_v1_types_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1164,7 +1466,7 @@ func (x *Peer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Peer.ProtoReflect.Descriptor instead.
 func (*Peer) Descriptor() ([]byte, []int) {
-	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{8}
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Peer) GetId() string {
@@ -1346,7 +1648,7 @@ type TopologyEvent struct {
 
 func (x *TopologyEvent) Reset() {
 	*x = TopologyEvent{}
-	mi := &file_bgpls_v1_types_proto_msgTypes[9]
+	mi := &file_bgpls_v1_types_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1358,7 +1660,7 @@ func (x *TopologyEvent) String() string {
 func (*TopologyEvent) ProtoMessage() {}
 
 func (x *TopologyEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_bgpls_v1_types_proto_msgTypes[9]
+	mi := &file_bgpls_v1_types_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1371,7 +1673,7 @@ func (x *TopologyEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopologyEvent.ProtoReflect.Descriptor instead.
 func (*TopologyEvent) Descriptor() ([]byte, []int) {
-	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{9}
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TopologyEvent) GetRevision() uint64 {
@@ -1454,7 +1756,7 @@ type Page struct {
 
 func (x *Page) Reset() {
 	*x = Page{}
-	mi := &file_bgpls_v1_types_proto_msgTypes[10]
+	mi := &file_bgpls_v1_types_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1466,7 +1768,7 @@ func (x *Page) String() string {
 func (*Page) ProtoMessage() {}
 
 func (x *Page) ProtoReflect() protoreflect.Message {
-	mi := &file_bgpls_v1_types_proto_msgTypes[10]
+	mi := &file_bgpls_v1_types_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1479,7 +1781,7 @@ func (x *Page) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Page.ProtoReflect.Descriptor instead.
 func (*Page) Descriptor() ([]byte, []int) {
-	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{10}
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Page) GetPageSize() uint32 {
@@ -1507,7 +1809,7 @@ type PageResult struct {
 
 func (x *PageResult) Reset() {
 	*x = PageResult{}
-	mi := &file_bgpls_v1_types_proto_msgTypes[11]
+	mi := &file_bgpls_v1_types_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1821,7 @@ func (x *PageResult) String() string {
 func (*PageResult) ProtoMessage() {}
 
 func (x *PageResult) ProtoReflect() protoreflect.Message {
-	mi := &file_bgpls_v1_types_proto_msgTypes[11]
+	mi := &file_bgpls_v1_types_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1834,7 @@ func (x *PageResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageResult.ProtoReflect.Descriptor instead.
 func (*PageResult) Descriptor() ([]byte, []int) {
-	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{11}
+	return file_bgpls_v1_types_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PageResult) GetNextPageToken() string {
@@ -1614,7 +1916,7 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"attributes\x18\f \x03(\v2\x13.bgpls.v1.AttributeR\n" +
 	"attributes\x12$\n" +
 	"\x0eipv4_router_id\x18\r \x01(\tR\fipv4RouterId\x12$\n" +
-	"\x0eipv6_router_id\x18\x0e \x01(\tR\fipv6RouterId\"\xe0\a\n" +
+	"\x0eipv6_router_id\x18\x0e \x01(\tR\fipv6RouterId\"\x9d\b\n" +
 	"\x04Link\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12\"\n" +
 	"\rlocal_node_id\x18\x02 \x01(\tR\vlocalNodeId\x12$\n" +
@@ -1641,7 +1943,37 @@ const file_bgpls_v1_types_proto_rawDesc = "" +
 	"\x12local_ipv4_address\x18\x13 \x01(\tR\x10localIpv4Address\x12.\n" +
 	"\x13remote_ipv4_address\x18\x14 \x01(\tR\x11remoteIpv4Address\x12,\n" +
 	"\x12local_ipv6_address\x18\x15 \x01(\tR\x10localIpv6Address\x12.\n" +
-	"\x13remote_ipv6_address\x18\x16 \x01(\tR\x11remoteIpv6Address\"\xd6\x02\n" +
+	"\x13remote_ipv6_address\x18\x16 \x01(\tR\x11remoteIpv6Address\x12;\n" +
+	"\vutilization\x18\x17 \x01(\v2\x19.bgpls.v1.LinkUtilizationR\vutilization\"\xdf\x02\n" +
+	"\x0fLinkUtilization\x12\x17\n" +
+	"\alink_id\x18\x01 \x01(\tR\x06linkId\x12\x15\n" +
+	"\x06in_bps\x18\x02 \x01(\x04R\x05inBps\x12\x17\n" +
+	"\aout_bps\x18\x03 \x01(\x04R\x06outBps\x12\x1b\n" +
+	"\tspeed_bps\x18\x04 \x01(\x04R\bspeedBps\x12 \n" +
+	"\vutilization\x18\x05 \x01(\x01R\vutilization\x12+\n" +
+	"\x11utilization_known\x18\x06 \x01(\bR\x10utilizationKnown\x12#\n" +
+	"\ravailable_bps\x18\a \x01(\x04R\favailableBps\x12;\n" +
+	"\vobserved_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\x125\n" +
+	"\bstale_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\astaleAt\"\xad\x02\n" +
+	"\x14InterfaceUtilization\x12\x16\n" +
+	"\x06device\x18\x01 \x01(\tR\x06device\x12%\n" +
+	"\x0einterface_name\x18\x02 \x01(\tR\rinterfaceName\x12%\n" +
+	"\x0eipv4_addresses\x18\x03 \x03(\tR\ripv4Addresses\x12%\n" +
+	"\x0eipv6_addresses\x18\x04 \x03(\tR\ripv6Addresses\x12\x1b\n" +
+	"\tspeed_bps\x18\x05 \x01(\x04R\bspeedBps\x12\x15\n" +
+	"\x06in_bps\x18\x06 \x01(\x04R\x05inBps\x12\x17\n" +
+	"\aout_bps\x18\a \x01(\x04R\x06outBps\x12;\n" +
+	"\vobserved_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\"\xf9\x01\n" +
+	"\x15UncorrelatedInterface\x12\x16\n" +
+	"\x06device\x18\x01 \x01(\tR\x06device\x12%\n" +
+	"\x0einterface_name\x18\x02 \x01(\tR\rinterfaceName\x12%\n" +
+	"\x0eipv4_addresses\x18\x03 \x03(\tR\ripv4Addresses\x12%\n" +
+	"\x0eipv6_addresses\x18\x04 \x03(\tR\ripv6Addresses\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12;\n" +
+	"\vobserved_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAt\"\xd6\x02\n" +
 	"\x06Prefix\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.bgpls.v1.EntityMetaR\x04meta\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\x12$\n" +
@@ -1752,7 +2084,7 @@ func file_bgpls_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_bgpls_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_bgpls_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_bgpls_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_bgpls_v1_types_proto_goTypes = []any{
 	(Freshness)(0),                // 0: bgpls.v1.Freshness
 	(Protocol)(0),                 // 1: bgpls.v1.Protocol
@@ -1765,16 +2097,19 @@ var file_bgpls_v1_types_proto_goTypes = []any{
 	(*Domain)(nil),                // 8: bgpls.v1.Domain
 	(*Node)(nil),                  // 9: bgpls.v1.Node
 	(*Link)(nil),                  // 10: bgpls.v1.Link
-	(*Prefix)(nil),                // 11: bgpls.v1.Prefix
-	(*Peer)(nil),                  // 12: bgpls.v1.Peer
-	(*TopologyEvent)(nil),         // 13: bgpls.v1.TopologyEvent
-	(*Page)(nil),                  // 14: bgpls.v1.Page
-	(*PageResult)(nil),            // 15: bgpls.v1.PageResult
-	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
+	(*LinkUtilization)(nil),       // 11: bgpls.v1.LinkUtilization
+	(*InterfaceUtilization)(nil),  // 12: bgpls.v1.InterfaceUtilization
+	(*UncorrelatedInterface)(nil), // 13: bgpls.v1.UncorrelatedInterface
+	(*Prefix)(nil),                // 14: bgpls.v1.Prefix
+	(*Peer)(nil),                  // 15: bgpls.v1.Peer
+	(*TopologyEvent)(nil),         // 16: bgpls.v1.TopologyEvent
+	(*Page)(nil),                  // 17: bgpls.v1.Page
+	(*PageResult)(nil),            // 18: bgpls.v1.PageResult
+	(*timestamppb.Timestamp)(nil), // 19: google.protobuf.Timestamp
 }
 var file_bgpls_v1_types_proto_depIdxs = []int32{
-	16, // 0: bgpls.v1.EntityMeta.first_seen:type_name -> google.protobuf.Timestamp
-	16, // 1: bgpls.v1.EntityMeta.last_seen:type_name -> google.protobuf.Timestamp
+	19, // 0: bgpls.v1.EntityMeta.first_seen:type_name -> google.protobuf.Timestamp
+	19, // 1: bgpls.v1.EntityMeta.last_seen:type_name -> google.protobuf.Timestamp
 	0,  // 2: bgpls.v1.EntityMeta.freshness:type_name -> bgpls.v1.Freshness
 	6,  // 3: bgpls.v1.EntityMeta.conflicts:type_name -> bgpls.v1.Conflict
 	4,  // 4: bgpls.v1.EntityMeta.decoded_tlvs:type_name -> bgpls.v1.RawTlv
@@ -1783,19 +2118,24 @@ var file_bgpls_v1_types_proto_depIdxs = []int32{
 	5,  // 7: bgpls.v1.Node.attributes:type_name -> bgpls.v1.Attribute
 	7,  // 8: bgpls.v1.Link.meta:type_name -> bgpls.v1.EntityMeta
 	5,  // 9: bgpls.v1.Link.attributes:type_name -> bgpls.v1.Attribute
-	7,  // 10: bgpls.v1.Prefix.meta:type_name -> bgpls.v1.EntityMeta
-	5,  // 11: bgpls.v1.Prefix.attributes:type_name -> bgpls.v1.Attribute
-	2,  // 12: bgpls.v1.Peer.session_state:type_name -> bgpls.v1.PeerSessionState
-	16, // 13: bgpls.v1.Peer.established_at:type_name -> google.protobuf.Timestamp
-	16, // 14: bgpls.v1.Peer.last_state_change:type_name -> google.protobuf.Timestamp
-	16, // 15: bgpls.v1.TopologyEvent.observed_at:type_name -> google.protobuf.Timestamp
-	3,  // 16: bgpls.v1.TopologyEvent.entity_kind:type_name -> bgpls.v1.EntityKind
-	16, // 17: bgpls.v1.PageResult.observed_at:type_name -> google.protobuf.Timestamp
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	11, // 10: bgpls.v1.Link.utilization:type_name -> bgpls.v1.LinkUtilization
+	19, // 11: bgpls.v1.LinkUtilization.observed_at:type_name -> google.protobuf.Timestamp
+	19, // 12: bgpls.v1.LinkUtilization.stale_at:type_name -> google.protobuf.Timestamp
+	19, // 13: bgpls.v1.InterfaceUtilization.observed_at:type_name -> google.protobuf.Timestamp
+	19, // 14: bgpls.v1.UncorrelatedInterface.observed_at:type_name -> google.protobuf.Timestamp
+	7,  // 15: bgpls.v1.Prefix.meta:type_name -> bgpls.v1.EntityMeta
+	5,  // 16: bgpls.v1.Prefix.attributes:type_name -> bgpls.v1.Attribute
+	2,  // 17: bgpls.v1.Peer.session_state:type_name -> bgpls.v1.PeerSessionState
+	19, // 18: bgpls.v1.Peer.established_at:type_name -> google.protobuf.Timestamp
+	19, // 19: bgpls.v1.Peer.last_state_change:type_name -> google.protobuf.Timestamp
+	19, // 20: bgpls.v1.TopologyEvent.observed_at:type_name -> google.protobuf.Timestamp
+	3,  // 21: bgpls.v1.TopologyEvent.entity_kind:type_name -> bgpls.v1.EntityKind
+	19, // 22: bgpls.v1.PageResult.observed_at:type_name -> google.protobuf.Timestamp
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_bgpls_v1_types_proto_init() }
@@ -1809,7 +2149,7 @@ func file_bgpls_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bgpls_v1_types_proto_rawDesc), len(file_bgpls_v1_types_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

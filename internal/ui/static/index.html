@@ -63,6 +63,36 @@
       <p class="muted">Nodes and links appear here after a BGP-LS peer advertises them.</p>
     </div>
     <div id="error" class="banner hidden" hidden></div>
+    <aside id="path" class="panel path-panel">
+      <div class="panel-head">
+        <h2>Path tester</h2>
+      </div>
+      <div class="path-fields">
+        <label class="field">
+          <span>Source</span>
+          <select id="path-src"></select>
+        </label>
+        <label class="field">
+          <span>Destination</span>
+          <select id="path-dst"></select>
+        </label>
+        <label class="field">
+          <span>Metric</span>
+          <select id="path-metric">
+            <option value="PATH_METRIC_IGP">IGP</option>
+            <option value="PATH_METRIC_TE">TE</option>
+            <option value="PATH_METRIC_DELAY">Delay</option>
+            <option value="PATH_METRIC_AVAILABLE_BW">Available BW</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Min available</span>
+          <input id="path-minbw" type="text" placeholder="e.g. 500M" autocomplete="off">
+        </label>
+        <button id="path-compute" type="button">Compute</button>
+      </div>
+      <p id="path-result" class="muted"></p>
+    </aside>
     <ul id="legend" class="legend"></ul>
   </main>
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -24,6 +27,7 @@ import (
 	bgpcollector "github.com/bgpls/bgpls/internal/bgp"
 	"github.com/bgpls/bgpls/internal/config"
 	"github.com/bgpls/bgpls/internal/store"
+	"github.com/bgpls/bgpls/internal/utilization"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -84,6 +88,11 @@ func serve(args []string) error {
 		return err
 	}
 	defer s.Close()
+	overlay, err := utilization.Open(filepath.Join(cfg.DataDir, "utilization"), utilization.Options{StaleAfter: cfg.Utilization.StaleAfter, SweepAfter: cfg.Utilization.SweepAfter})
+	if err != nil {
+		return err
+	}
+	defer overlay.Close()
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	if s.Revision() == 0 {
@@ -105,7 +114,7 @@ func serve(args []string) error {
 	}
 	defer collector.Close(context.Background())
 	authorizer := apiServer.NewAuthorizer(cfg.API.RBAC, cfg.API.TLS.DevelopmentInsecure, cfg.API.TLS.AllowAnonymousReader)
-	handler := apiServer.NewHandler(s, collector, version, time.Now().UTC(), authorizer)
+	handler := apiServer.NewHandlerWithOverlay(s, collector, version, time.Now().UTC(), authorizer, overlay)
 	server := &http.Server{Addr: cfg.API.Listen, Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	errCh := make(chan error, 3)
 	if cfg.API.MetricsListen != "" {
@@ -115,7 +124,7 @@ func serve(args []string) error {
 	}
 	if cfg.API.UIListen != "" {
 		uiAuthorizer := apiServer.NewAuthorizer(cfg.API.RBAC, false, true)
-		uiHandler := apiServer.NewHandler(s, collector, version, time.Now().UTC(), uiAuthorizer)
+		uiHandler := apiServer.NewHandlerWithOverlay(s, collector, version, time.Now().UTC(), uiAuthorizer, overlay)
 		uiServer := &http.Server{Addr: cfg.API.UIListen, Handler: uiHandler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 		go func() {
 			slog.Info("topology UI listening without client certificates", "address", cfg.API.UIListen, "ui", "http://"+cfg.API.UIListen+"/ui/")
@@ -171,6 +180,8 @@ func serve(args []string) error {
 			}
 		}()
 	}
+	go overlay.Serve(ctx)
+	go watchUtilizationIndex(ctx, overlay, s)
 	go retentionLoop(ctx, s, cfg.Retention)
 	select {
 	case <-ctx.Done():
@@ -184,6 +195,29 @@ func serve(args []string) error {
 		return err
 	}
 }
+func watchUtilizationIndex(ctx context.Context, overlay *utilization.Overlay, s *store.Store) {
+	overlay.RebuildIndex(s.Snapshot().Links)
+	events, err := s.Subscribe(ctx, s.Revision())
+	if err != nil {
+		slog.Error("utilization index subscription failed", "error", err)
+		return
+	}
+	for event := range events {
+		if event.EntityKind != bgplsv1.EntityKind_ENTITY_KIND_LINK {
+			continue
+		}
+		if event.Operation == "DELETE" {
+			overlay.RemoveLink(event.EntityId)
+			continue
+		}
+		var link bgplsv1.Link
+		if json.Unmarshal(event.AfterJson, &link) != nil {
+			continue
+		}
+		overlay.IndexLink(&link)
+	}
+}
+
 func retentionLoop(ctx context.Context, s *store.Store, r config.Retention) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -289,6 +323,7 @@ func topologyCommand(args []string) error {
 	cf := addClientFlags(fs)
 	domain := fs.String("domain", "", "domain filter")
 	revision := fs.Uint64("revision", 0, "topology revision")
+	showUtil := fs.Bool("show-utilization", false, "include live utilization overlay on links")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -320,6 +355,11 @@ func topologyCommand(args []string) error {
 		if err != nil {
 			return err
 		}
+		if !*showUtil {
+			for _, l := range res.Msg.Links {
+				l.Utilization = nil
+			}
+		}
 		return printProto(res.Msg)
 	case "prefixes":
 		res, err := svc.ListPrefixes(ctx, connect.NewRequest(&bgplsv1.ListPrefixesRequest{Filter: filter, Revision: *revision, Page: &bgplsv1.Page{PageSize: 1000}}))
@@ -341,8 +381,11 @@ func pathCommand(args []string) error {
 	domain := fs.String("domain", "", "topology domain")
 	source := fs.String("source", "", "source node ID, name, router ID, or IP")
 	destination := fs.String("destination", "", "destination node ID, name, router ID, or IP")
-	metric := fs.String("metric", "igp", "igp, te, or delay")
+	metric := fs.String("metric", "igp", "igp, te, delay, or available-bw")
 	revision := fs.Uint64("revision", 0, "topology revision")
+	minAvail := fs.String("min-available-bw", "", "minimum live available bandwidth (K/M/G suffixes)")
+	excludeSRLG := fs.String("exclude-srlg", "", "comma-separated SRLGs to exclude")
+	stalePolicy := fs.String("stale-policy", "unknown", "unknown (treat as unconstrained) or fail")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -355,13 +398,42 @@ func pathCommand(args []string) error {
 		metricType = bgplsv1.PathMetric_PATH_METRIC_TE
 	case "delay":
 		metricType = bgplsv1.PathMetric_PATH_METRIC_DELAY
+	case "available-bw", "available_bw":
+		metricType = bgplsv1.PathMetric_PATH_METRIC_AVAILABLE_BW
+	}
+	constraints := &bgplsv1.PathConstraints{}
+	if *minAvail != "" {
+		bps, err := utilization.ParseBitsPerSecond(*minAvail)
+		if err != nil {
+			return err
+		}
+		constraints.MinAvailableBps = bps
+	}
+	if *excludeSRLG != "" {
+		for _, part := range strings.Split(*excludeSRLG, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			n, err := strconv.ParseUint(part, 10, 32)
+			if err != nil {
+				return fmt.Errorf("exclude-srlg: %w", err)
+			}
+			constraints.ExcludeSrlgs = append(constraints.ExcludeSrlgs, uint32(n))
+		}
+	}
+	switch strings.ToLower(*stalePolicy) {
+	case "fail":
+		constraints.StalePolicy = bgplsv1.StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_FAIL_LINK
+	default:
+		constraints.StalePolicy = bgplsv1.StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN
 	}
 	client, err := cf.httpClient()
 	if err != nil {
 		return err
 	}
 	svc := bgplsv1connect.NewPathServiceClient(client, cf.server)
-	res, err := svc.ComputePaths(context.Background(), connect.NewRequest(&bgplsv1.ComputePathsRequest{DomainId: *domain, Source: *source, Destination: *destination, Metric: metricType, Revision: *revision, MaxPaths: 1}))
+	res, err := svc.ComputePaths(context.Background(), connect.NewRequest(&bgplsv1.ComputePathsRequest{DomainId: *domain, Source: *source, Destination: *destination, Metric: metricType, Constraints: constraints, Revision: *revision, MaxPaths: 1}))
 	if err != nil {
 		return err
 	}

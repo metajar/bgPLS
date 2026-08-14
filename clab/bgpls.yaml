@@ -26,6 +26,10 @@ retention:
   duration: 720h
   max_bytes: 1073741824
 
+utilization:
+  stale_after: 45s
+  sweep_after: 10m
+
 domains:
   - id: core
     name: Core IS-IS fabric

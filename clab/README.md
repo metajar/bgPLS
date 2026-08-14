@@ -6,7 +6,7 @@ Clone this repository on a Linux host with Docker and [Containerlab](https://con
 make clab
 ```
 
-That builds the collector image, mints lab mTLS certificates, deploys eight FRR routers plus two SR Linux nodes and bgPLS, and waits until BGP-LS topology is visible. Go is not required on the lab host; the collector image is built inside Docker. The first deploy pulls `ghcr.io/nokia/srlinux:26.7.1-554`.
+That builds the collector and utilcol image, mints lab mTLS certificates, deploys eight FRR routers plus two SR Linux nodes, snmpd, iperf3 generators, bgPLS, and the utilization poller, and waits until BGP-LS topology is visible. Go is not required on the lab host; images are built inside Docker. The first deploy pulls `ghcr.io/nokia/srlinux:26.7.1-554`.
 
 ## What you get
 
@@ -37,7 +37,8 @@ That builds the collector image, mints lab mTLS certificates, deploys eight FRR 
 ./bgpls topology links --domain core
 ./bgpls topology prefixes --domain core
 ./bgpls path compute --domain core --source r1 --destination srl2 --metric igp
-./bgpls peers list
+./bgpls topology links --domain core --show-utilization
+./clab/scripts/traffic.sh demo
 ```
 
 If node names have not appeared yet, use loopback addresses:
@@ -57,6 +58,24 @@ Equivalent explicit invocation:
 ```
 
 Client certificates are `admin`, `operator`, and `reader` under `clab/pki`. Set `BGPLS_ROLE=reader` on the wrapper to use the reader identity. From another machine, copy `clab/pki` and use `--server https://<lab-host>:7443`.
+
+## Traffic and utilization demo
+
+`tgen1` sits behind r1 (`10.10.1.0/24`) and `tgen2` behind srl2 (`10.10.2.0/24`).
+FRR nodes run snmpd; SR Linux is scraped over gNMI. `utilcol` reports rates to
+bgPLS every 10s.
+
+```sh
+./clab/scripts/traffic.sh steady --rate 200M
+./clab/scripts/traffic.sh surge --rate 900M --duration 60
+./clab/scripts/traffic.sh demo
+./clab/scripts/traffic.sh stop
+```
+
+`demo` starts a baseline flow, computes an IGP path with a live available-bandwidth
+constraint that still qualifies, surges, and checks that CSPF moves off the hot
+link (or returns no-path). Open `http://127.0.0.1:8080/ui/` to watch link colors
+and the path tester. See [docs/utilization.md](../docs/utilization.md).
 
 ## Operations
 

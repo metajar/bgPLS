@@ -4,7 +4,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -buildvcs=false -o /out/bgpls ./cmd/bgpls
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -buildvcs=false -o /out/bgpls ./cmd/bgpls \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -buildvcs=false -o /out/utilcol ./cmd/utilcol
 
 FROM debian:bookworm-slim
 
@@ -13,6 +14,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/bgpls /usr/local/bin/bgpls
+COPY --from=build /out/utilcol /usr/local/bin/utilcol
 COPY clab/collector/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

@@ -116,6 +116,29 @@ issue_client admin
 issue_client operator
 issue_client reader
 
+cat >"$TMP/utilcol.cnf" <<EOF
+[req]
+distinguished_name = dn
+req_extensions = ext
+prompt = no
+[dn]
+CN = utilcol
+[ext]
+basicConstraints = CA:FALSE
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = clientAuth
+subjectAltName = @san
+[san]
+URI.1 = spiffe://bgpls.lab/bgpls/operator/utilcol
+DNS.1 = utilcol.bgpls.lab
+EOF
+openssl req -newkey rsa:2048 -sha256 -nodes \
+  -keyout "$PKI/utilcol.key" -out "$TMP/utilcol.csr" \
+  -config "$TMP/utilcol.cnf" >/dev/null 2>&1
+openssl x509 -req -in "$TMP/utilcol.csr" -CA "$PKI/ca.crt" -CAkey "$PKI/ca.key" \
+  -CAcreateserial -out "$PKI/utilcol.crt" -days 825 -sha256 \
+  -extfile "$TMP/utilcol.cnf" -extensions ext >/dev/null 2>&1
+
 chmod 600 "$PKI"/*.key
 rm -f "$PKI/ca.srl" "$PKI/.srl" 2>/dev/null || true
 printf '%s\n' "$HOST_IP" >"$PKI/host-ip"

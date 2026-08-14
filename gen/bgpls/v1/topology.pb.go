@@ -25,10 +25,11 @@ const (
 type PathMetric int32
 
 const (
-	PathMetric_PATH_METRIC_UNSPECIFIED PathMetric = 0
-	PathMetric_PATH_METRIC_IGP         PathMetric = 1
-	PathMetric_PATH_METRIC_TE          PathMetric = 2
-	PathMetric_PATH_METRIC_DELAY       PathMetric = 3
+	PathMetric_PATH_METRIC_UNSPECIFIED  PathMetric = 0
+	PathMetric_PATH_METRIC_IGP          PathMetric = 1
+	PathMetric_PATH_METRIC_TE           PathMetric = 2
+	PathMetric_PATH_METRIC_DELAY        PathMetric = 3
+	PathMetric_PATH_METRIC_AVAILABLE_BW PathMetric = 4
 )
 
 // Enum value maps for PathMetric.
@@ -38,12 +39,14 @@ var (
 		1: "PATH_METRIC_IGP",
 		2: "PATH_METRIC_TE",
 		3: "PATH_METRIC_DELAY",
+		4: "PATH_METRIC_AVAILABLE_BW",
 	}
 	PathMetric_value = map[string]int32{
-		"PATH_METRIC_UNSPECIFIED": 0,
-		"PATH_METRIC_IGP":         1,
-		"PATH_METRIC_TE":          2,
-		"PATH_METRIC_DELAY":       3,
+		"PATH_METRIC_UNSPECIFIED":  0,
+		"PATH_METRIC_IGP":          1,
+		"PATH_METRIC_TE":           2,
+		"PATH_METRIC_DELAY":        3,
+		"PATH_METRIC_AVAILABLE_BW": 4,
 	}
 )
 
@@ -72,6 +75,55 @@ func (x PathMetric) Number() protoreflect.EnumNumber {
 // Deprecated: Use PathMetric.Descriptor instead.
 func (PathMetric) EnumDescriptor() ([]byte, []int) {
 	return file_bgpls_v1_topology_proto_rawDescGZIP(), []int{0}
+}
+
+type StaleUtilizationPolicy int32
+
+const (
+	StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_UNSPECIFIED      StaleUtilizationPolicy = 0
+	StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN StaleUtilizationPolicy = 1
+	StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_FAIL_LINK        StaleUtilizationPolicy = 2
+)
+
+// Enum value maps for StaleUtilizationPolicy.
+var (
+	StaleUtilizationPolicy_name = map[int32]string{
+		0: "STALE_UTILIZATION_POLICY_UNSPECIFIED",
+		1: "STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN",
+		2: "STALE_UTILIZATION_POLICY_FAIL_LINK",
+	}
+	StaleUtilizationPolicy_value = map[string]int32{
+		"STALE_UTILIZATION_POLICY_UNSPECIFIED":      0,
+		"STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN": 1,
+		"STALE_UTILIZATION_POLICY_FAIL_LINK":        2,
+	}
+)
+
+func (x StaleUtilizationPolicy) Enum() *StaleUtilizationPolicy {
+	p := new(StaleUtilizationPolicy)
+	*p = x
+	return p
+}
+
+func (x StaleUtilizationPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StaleUtilizationPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_bgpls_v1_topology_proto_enumTypes[1].Descriptor()
+}
+
+func (StaleUtilizationPolicy) Type() protoreflect.EnumType {
+	return &file_bgpls_v1_topology_proto_enumTypes[1]
+}
+
+func (x StaleUtilizationPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StaleUtilizationPolicy.Descriptor instead.
+func (StaleUtilizationPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_bgpls_v1_topology_proto_rawDescGZIP(), []int{1}
 }
 
 type TopologyFilter struct {
@@ -1575,6 +1627,9 @@ type PathConstraints struct {
 	IncludeNodeIds                           []string               `protobuf:"bytes,5,rep,name=include_node_ids,json=includeNodeIds,proto3" json:"include_node_ids,omitempty"`
 	AvoidNodeIds                             []string               `protobuf:"bytes,6,rep,name=avoid_node_ids,json=avoidNodeIds,proto3" json:"avoid_node_ids,omitempty"`
 	AvoidLinkIds                             []string               `protobuf:"bytes,7,rep,name=avoid_link_ids,json=avoidLinkIds,proto3" json:"avoid_link_ids,omitempty"`
+	MinAvailableBps                          uint64                 `protobuf:"varint,8,opt,name=min_available_bps,json=minAvailableBps,proto3" json:"min_available_bps,omitempty"`
+	StalePolicy                              StaleUtilizationPolicy `protobuf:"varint,9,opt,name=stale_policy,json=stalePolicy,proto3,enum=bgpls.v1.StaleUtilizationPolicy" json:"stale_policy,omitempty"`
+	ExcludeSrlgs                             []uint32               `protobuf:"varint,10,rep,packed,name=exclude_srlgs,json=excludeSrlgs,proto3" json:"exclude_srlgs,omitempty"`
 	unknownFields                            protoimpl.UnknownFields
 	sizeCache                                protoimpl.SizeCache
 }
@@ -1654,6 +1709,27 @@ func (x *PathConstraints) GetAvoidNodeIds() []string {
 func (x *PathConstraints) GetAvoidLinkIds() []string {
 	if x != nil {
 		return x.AvoidLinkIds
+	}
+	return nil
+}
+
+func (x *PathConstraints) GetMinAvailableBps() uint64 {
+	if x != nil {
+		return x.MinAvailableBps
+	}
+	return 0
+}
+
+func (x *PathConstraints) GetStalePolicy() StaleUtilizationPolicy {
+	if x != nil {
+		return x.StalePolicy
+	}
+	return StaleUtilizationPolicy_STALE_UTILIZATION_POLICY_UNSPECIFIED
+}
+
+func (x *PathConstraints) GetExcludeSrlgs() []uint32 {
+	if x != nil {
+		return x.ExcludeSrlgs
 	}
 	return nil
 }
@@ -1816,6 +1892,8 @@ type ComputedPath struct {
 	TotalMetric                       uint64                 `protobuf:"varint,2,opt,name=total_metric,json=totalMetric,proto3" json:"total_metric,omitempty"`
 	TotalDelayMicroseconds            uint64                 `protobuf:"varint,3,opt,name=total_delay_microseconds,json=totalDelayMicroseconds,proto3" json:"total_delay_microseconds,omitempty"`
 	BottleneckBandwidthBytesPerSecond float64                `protobuf:"fixed64,4,opt,name=bottleneck_bandwidth_bytes_per_second,json=bottleneckBandwidthBytesPerSecond,proto3" json:"bottleneck_bandwidth_bytes_per_second,omitempty"`
+	BottleneckAvailableBps            uint64                 `protobuf:"varint,5,opt,name=bottleneck_available_bps,json=bottleneckAvailableBps,proto3" json:"bottleneck_available_bps,omitempty"`
+	UsedStaleData                     bool                   `protobuf:"varint,6,opt,name=used_stale_data,json=usedStaleData,proto3" json:"used_stale_data,omitempty"`
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -1876,6 +1954,20 @@ func (x *ComputedPath) GetBottleneckBandwidthBytesPerSecond() float64 {
 		return x.BottleneckBandwidthBytesPerSecond
 	}
 	return 0
+}
+
+func (x *ComputedPath) GetBottleneckAvailableBps() uint64 {
+	if x != nil {
+		return x.BottleneckAvailableBps
+	}
+	return 0
+}
+
+func (x *ComputedPath) GetUsedStaleData() bool {
+	if x != nil {
+		return x.UsedStaleData
+	}
+	return false
 }
 
 type ComputePathsResponse struct {
@@ -2475,7 +2567,7 @@ const file_bgpls_v1_topology_proto_rawDesc = "" +
 	"\x05nodes\x18\x03 \x03(\v2\x0e.bgpls.v1.NodeR\x05nodes\x12$\n" +
 	"\x05links\x18\x04 \x03(\v2\x0e.bgpls.v1.LinkR\x05links\x12,\n" +
 	"\bprefixes\x18\x05 \x03(\v2\x10.bgpls.v1.PrefixR\bprefixes\x12\x12\n" +
-	"\x04last\x18\x06 \x01(\bR\x04last\"\xf8\x02\n" +
+	"\x04last\x18\x06 \x01(\bR\x04last\"\x8e\x04\n" +
 	"\x0fPathConstraints\x12*\n" +
 	"\x11multi_topology_id\x18\x01 \x01(\rR\x0fmultiTopologyId\x12_\n" +
 	"-minimum_reservable_bandwidth_bytes_per_second\x18\x02 \x01(\x01R(minimumReservableBandwidthBytesPerSecond\x120\n" +
@@ -2483,7 +2575,11 @@ const file_bgpls_v1_topology_proto_rawDesc = "" +
 	"\x14exclude_admin_groups\x18\x04 \x03(\rR\x12excludeAdminGroups\x12(\n" +
 	"\x10include_node_ids\x18\x05 \x03(\tR\x0eincludeNodeIds\x12$\n" +
 	"\x0eavoid_node_ids\x18\x06 \x03(\tR\favoidNodeIds\x12$\n" +
-	"\x0eavoid_link_ids\x18\a \x03(\tR\favoidLinkIds\"\x90\x02\n" +
+	"\x0eavoid_link_ids\x18\a \x03(\tR\favoidLinkIds\x12*\n" +
+	"\x11min_available_bps\x18\b \x01(\x04R\x0fminAvailableBps\x12C\n" +
+	"\fstale_policy\x18\t \x01(\x0e2 .bgpls.v1.StaleUtilizationPolicyR\vstalePolicy\x12#\n" +
+	"\rexclude_srlgs\x18\n" +
+	" \x03(\rR\fexcludeSrlgs\"\x90\x02\n" +
 	"\x13ComputePathsRequest\x12\x1b\n" +
 	"\tdomain_id\x18\x01 \x01(\tR\bdomainId\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12 \n" +
@@ -2495,12 +2591,14 @@ const file_bgpls_v1_topology_proto_rawDesc = "" +
 	"\aPathHop\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\rR\x05index\x12\"\n" +
 	"\x04node\x18\x02 \x01(\v2\x0e.bgpls.v1.NodeR\x04node\x123\n" +
-	"\routgoing_link\x18\x03 \x01(\v2\x0e.bgpls.v1.LinkR\foutgoingLink\"\xe4\x01\n" +
+	"\routgoing_link\x18\x03 \x01(\v2\x0e.bgpls.v1.LinkR\foutgoingLink\"\xc6\x02\n" +
 	"\fComputedPath\x12%\n" +
 	"\x04hops\x18\x01 \x03(\v2\x11.bgpls.v1.PathHopR\x04hops\x12!\n" +
 	"\ftotal_metric\x18\x02 \x01(\x04R\vtotalMetric\x128\n" +
 	"\x18total_delay_microseconds\x18\x03 \x01(\x04R\x16totalDelayMicroseconds\x12P\n" +
-	"%bottleneck_bandwidth_bytes_per_second\x18\x04 \x01(\x01R!bottleneckBandwidthBytesPerSecond\"\x82\x01\n" +
+	"%bottleneck_bandwidth_bytes_per_second\x18\x04 \x01(\x01R!bottleneckBandwidthBytesPerSecond\x128\n" +
+	"\x18bottleneck_available_bps\x18\x05 \x01(\x04R\x16bottleneckAvailableBps\x12&\n" +
+	"\x0fused_stale_data\x18\x06 \x01(\bR\rusedStaleData\"\x82\x01\n" +
 	"\x14ComputePathsResponse\x12,\n" +
 	"\x05paths\x18\x01 \x03(\v2\x16.bgpls.v1.ComputedPathR\x05paths\x12\x1a\n" +
 	"\brevision\x18\x02 \x01(\x04R\brevision\x12 \n" +
@@ -2535,13 +2633,18 @@ const file_bgpls_v1_topology_proto_rawDesc = "" +
 	"\achanges\x18\x01 \x03(\v2\x17.bgpls.v1.TopologyEventR\achanges\x12#\n" +
 	"\rfrom_revision\x18\x02 \x01(\x04R\ffromRevision\x12\x1f\n" +
 	"\vto_revision\x18\x03 \x01(\x04R\n" +
-	"toRevision*i\n" +
+	"toRevision*\x87\x01\n" +
 	"\n" +
 	"PathMetric\x12\x1b\n" +
 	"\x17PATH_METRIC_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fPATH_METRIC_IGP\x10\x01\x12\x12\n" +
 	"\x0ePATH_METRIC_TE\x10\x02\x12\x15\n" +
-	"\x11PATH_METRIC_DELAY\x10\x032\x81\a\n" +
+	"\x11PATH_METRIC_DELAY\x10\x03\x12\x1c\n" +
+	"\x18PATH_METRIC_AVAILABLE_BW\x10\x04*\x99\x01\n" +
+	"\x16StaleUtilizationPolicy\x12(\n" +
+	"$STALE_UTILIZATION_POLICY_UNSPECIFIED\x10\x00\x12-\n" +
+	")STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN\x10\x01\x12&\n" +
+	"\"STALE_UTILIZATION_POLICY_FAIL_LINK\x10\x022\x81\a\n" +
 	"\x0fTopologyService\x12G\n" +
 	"\n" +
 	"GetSummary\x12\x1b.bgpls.v1.GetSummaryRequest\x1a\x1c.bgpls.v1.GetSummaryResponse\x12J\n" +
@@ -2575,144 +2678,146 @@ func file_bgpls_v1_topology_proto_rawDescGZIP() []byte {
 	return file_bgpls_v1_topology_proto_rawDescData
 }
 
-var file_bgpls_v1_topology_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_bgpls_v1_topology_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_bgpls_v1_topology_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_bgpls_v1_topology_proto_goTypes = []any{
 	(PathMetric)(0),                // 0: bgpls.v1.PathMetric
-	(*TopologyFilter)(nil),         // 1: bgpls.v1.TopologyFilter
-	(*GetSummaryRequest)(nil),      // 2: bgpls.v1.GetSummaryRequest
-	(*GetSummaryResponse)(nil),     // 3: bgpls.v1.GetSummaryResponse
-	(*ListDomainsRequest)(nil),     // 4: bgpls.v1.ListDomainsRequest
-	(*ListDomainsResponse)(nil),    // 5: bgpls.v1.ListDomainsResponse
-	(*GetNodeRequest)(nil),         // 6: bgpls.v1.GetNodeRequest
-	(*GetNodeResponse)(nil),        // 7: bgpls.v1.GetNodeResponse
-	(*ListNodesRequest)(nil),       // 8: bgpls.v1.ListNodesRequest
-	(*ListNodesResponse)(nil),      // 9: bgpls.v1.ListNodesResponse
-	(*GetNeighborsRequest)(nil),    // 10: bgpls.v1.GetNeighborsRequest
-	(*GetNeighborsResponse)(nil),   // 11: bgpls.v1.GetNeighborsResponse
-	(*GetLinkRequest)(nil),         // 12: bgpls.v1.GetLinkRequest
-	(*GetLinkResponse)(nil),        // 13: bgpls.v1.GetLinkResponse
-	(*ListLinksRequest)(nil),       // 14: bgpls.v1.ListLinksRequest
-	(*ListLinksResponse)(nil),      // 15: bgpls.v1.ListLinksResponse
-	(*GetPrefixRequest)(nil),       // 16: bgpls.v1.GetPrefixRequest
-	(*GetPrefixResponse)(nil),      // 17: bgpls.v1.GetPrefixResponse
-	(*ListPrefixesRequest)(nil),    // 18: bgpls.v1.ListPrefixesRequest
-	(*ListPrefixesResponse)(nil),   // 19: bgpls.v1.ListPrefixesResponse
-	(*ResolveRequest)(nil),         // 20: bgpls.v1.ResolveRequest
-	(*ResolveResponse)(nil),        // 21: bgpls.v1.ResolveResponse
-	(*WatchTopologyRequest)(nil),   // 22: bgpls.v1.WatchTopologyRequest
-	(*WatchTopologyResponse)(nil),  // 23: bgpls.v1.WatchTopologyResponse
-	(*StreamSnapshotRequest)(nil),  // 24: bgpls.v1.StreamSnapshotRequest
-	(*StreamSnapshotResponse)(nil), // 25: bgpls.v1.StreamSnapshotResponse
-	(*PathConstraints)(nil),        // 26: bgpls.v1.PathConstraints
-	(*ComputePathsRequest)(nil),    // 27: bgpls.v1.ComputePathsRequest
-	(*PathHop)(nil),                // 28: bgpls.v1.PathHop
-	(*ComputedPath)(nil),           // 29: bgpls.v1.ComputedPath
-	(*ComputePathsResponse)(nil),   // 30: bgpls.v1.ComputePathsResponse
-	(*AnalyzeImpactRequest)(nil),   // 31: bgpls.v1.AnalyzeImpactRequest
-	(*AnalyzeImpactResponse)(nil),  // 32: bgpls.v1.AnalyzeImpactResponse
-	(*ImpactComponent)(nil),        // 33: bgpls.v1.ImpactComponent
-	(*ListChangesRequest)(nil),     // 34: bgpls.v1.ListChangesRequest
-	(*ListChangesResponse)(nil),    // 35: bgpls.v1.ListChangesResponse
-	(*DiffTopologyRequest)(nil),    // 36: bgpls.v1.DiffTopologyRequest
-	(*DiffTopologyResponse)(nil),   // 37: bgpls.v1.DiffTopologyResponse
-	(Protocol)(0),                  // 38: bgpls.v1.Protocol
-	(Freshness)(0),                 // 39: bgpls.v1.Freshness
-	(*timestamppb.Timestamp)(nil),  // 40: google.protobuf.Timestamp
-	(*Page)(nil),                   // 41: bgpls.v1.Page
-	(*Domain)(nil),                 // 42: bgpls.v1.Domain
-	(*PageResult)(nil),             // 43: bgpls.v1.PageResult
-	(*Node)(nil),                   // 44: bgpls.v1.Node
-	(*Link)(nil),                   // 45: bgpls.v1.Link
-	(*Prefix)(nil),                 // 46: bgpls.v1.Prefix
-	(*TopologyEvent)(nil),          // 47: bgpls.v1.TopologyEvent
+	(StaleUtilizationPolicy)(0),    // 1: bgpls.v1.StaleUtilizationPolicy
+	(*TopologyFilter)(nil),         // 2: bgpls.v1.TopologyFilter
+	(*GetSummaryRequest)(nil),      // 3: bgpls.v1.GetSummaryRequest
+	(*GetSummaryResponse)(nil),     // 4: bgpls.v1.GetSummaryResponse
+	(*ListDomainsRequest)(nil),     // 5: bgpls.v1.ListDomainsRequest
+	(*ListDomainsResponse)(nil),    // 6: bgpls.v1.ListDomainsResponse
+	(*GetNodeRequest)(nil),         // 7: bgpls.v1.GetNodeRequest
+	(*GetNodeResponse)(nil),        // 8: bgpls.v1.GetNodeResponse
+	(*ListNodesRequest)(nil),       // 9: bgpls.v1.ListNodesRequest
+	(*ListNodesResponse)(nil),      // 10: bgpls.v1.ListNodesResponse
+	(*GetNeighborsRequest)(nil),    // 11: bgpls.v1.GetNeighborsRequest
+	(*GetNeighborsResponse)(nil),   // 12: bgpls.v1.GetNeighborsResponse
+	(*GetLinkRequest)(nil),         // 13: bgpls.v1.GetLinkRequest
+	(*GetLinkResponse)(nil),        // 14: bgpls.v1.GetLinkResponse
+	(*ListLinksRequest)(nil),       // 15: bgpls.v1.ListLinksRequest
+	(*ListLinksResponse)(nil),      // 16: bgpls.v1.ListLinksResponse
+	(*GetPrefixRequest)(nil),       // 17: bgpls.v1.GetPrefixRequest
+	(*GetPrefixResponse)(nil),      // 18: bgpls.v1.GetPrefixResponse
+	(*ListPrefixesRequest)(nil),    // 19: bgpls.v1.ListPrefixesRequest
+	(*ListPrefixesResponse)(nil),   // 20: bgpls.v1.ListPrefixesResponse
+	(*ResolveRequest)(nil),         // 21: bgpls.v1.ResolveRequest
+	(*ResolveResponse)(nil),        // 22: bgpls.v1.ResolveResponse
+	(*WatchTopologyRequest)(nil),   // 23: bgpls.v1.WatchTopologyRequest
+	(*WatchTopologyResponse)(nil),  // 24: bgpls.v1.WatchTopologyResponse
+	(*StreamSnapshotRequest)(nil),  // 25: bgpls.v1.StreamSnapshotRequest
+	(*StreamSnapshotResponse)(nil), // 26: bgpls.v1.StreamSnapshotResponse
+	(*PathConstraints)(nil),        // 27: bgpls.v1.PathConstraints
+	(*ComputePathsRequest)(nil),    // 28: bgpls.v1.ComputePathsRequest
+	(*PathHop)(nil),                // 29: bgpls.v1.PathHop
+	(*ComputedPath)(nil),           // 30: bgpls.v1.ComputedPath
+	(*ComputePathsResponse)(nil),   // 31: bgpls.v1.ComputePathsResponse
+	(*AnalyzeImpactRequest)(nil),   // 32: bgpls.v1.AnalyzeImpactRequest
+	(*AnalyzeImpactResponse)(nil),  // 33: bgpls.v1.AnalyzeImpactResponse
+	(*ImpactComponent)(nil),        // 34: bgpls.v1.ImpactComponent
+	(*ListChangesRequest)(nil),     // 35: bgpls.v1.ListChangesRequest
+	(*ListChangesResponse)(nil),    // 36: bgpls.v1.ListChangesResponse
+	(*DiffTopologyRequest)(nil),    // 37: bgpls.v1.DiffTopologyRequest
+	(*DiffTopologyResponse)(nil),   // 38: bgpls.v1.DiffTopologyResponse
+	(Protocol)(0),                  // 39: bgpls.v1.Protocol
+	(Freshness)(0),                 // 40: bgpls.v1.Freshness
+	(*timestamppb.Timestamp)(nil),  // 41: google.protobuf.Timestamp
+	(*Page)(nil),                   // 42: bgpls.v1.Page
+	(*Domain)(nil),                 // 43: bgpls.v1.Domain
+	(*PageResult)(nil),             // 44: bgpls.v1.PageResult
+	(*Node)(nil),                   // 45: bgpls.v1.Node
+	(*Link)(nil),                   // 46: bgpls.v1.Link
+	(*Prefix)(nil),                 // 47: bgpls.v1.Prefix
+	(*TopologyEvent)(nil),          // 48: bgpls.v1.TopologyEvent
 }
 var file_bgpls_v1_topology_proto_depIdxs = []int32{
-	38, // 0: bgpls.v1.TopologyFilter.protocols:type_name -> bgpls.v1.Protocol
-	39, // 1: bgpls.v1.TopologyFilter.freshness:type_name -> bgpls.v1.Freshness
-	1,  // 2: bgpls.v1.GetSummaryRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	40, // 3: bgpls.v1.GetSummaryResponse.observed_at:type_name -> google.protobuf.Timestamp
-	41, // 4: bgpls.v1.ListDomainsRequest.page:type_name -> bgpls.v1.Page
-	42, // 5: bgpls.v1.ListDomainsResponse.domains:type_name -> bgpls.v1.Domain
-	43, // 6: bgpls.v1.ListDomainsResponse.page:type_name -> bgpls.v1.PageResult
-	44, // 7: bgpls.v1.GetNodeResponse.node:type_name -> bgpls.v1.Node
-	1,  // 8: bgpls.v1.ListNodesRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	41, // 9: bgpls.v1.ListNodesRequest.page:type_name -> bgpls.v1.Page
-	44, // 10: bgpls.v1.ListNodesResponse.nodes:type_name -> bgpls.v1.Node
-	43, // 11: bgpls.v1.ListNodesResponse.page:type_name -> bgpls.v1.PageResult
-	1,  // 12: bgpls.v1.GetNeighborsRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	44, // 13: bgpls.v1.GetNeighborsResponse.nodes:type_name -> bgpls.v1.Node
-	45, // 14: bgpls.v1.GetNeighborsResponse.links:type_name -> bgpls.v1.Link
-	45, // 15: bgpls.v1.GetLinkResponse.link:type_name -> bgpls.v1.Link
-	1,  // 16: bgpls.v1.ListLinksRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	41, // 17: bgpls.v1.ListLinksRequest.page:type_name -> bgpls.v1.Page
-	45, // 18: bgpls.v1.ListLinksResponse.links:type_name -> bgpls.v1.Link
-	43, // 19: bgpls.v1.ListLinksResponse.page:type_name -> bgpls.v1.PageResult
-	46, // 20: bgpls.v1.GetPrefixResponse.prefix:type_name -> bgpls.v1.Prefix
-	1,  // 21: bgpls.v1.ListPrefixesRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	41, // 22: bgpls.v1.ListPrefixesRequest.page:type_name -> bgpls.v1.Page
-	46, // 23: bgpls.v1.ListPrefixesResponse.prefixes:type_name -> bgpls.v1.Prefix
-	43, // 24: bgpls.v1.ListPrefixesResponse.page:type_name -> bgpls.v1.PageResult
-	44, // 25: bgpls.v1.ResolveResponse.nodes:type_name -> bgpls.v1.Node
-	45, // 26: bgpls.v1.ResolveResponse.links:type_name -> bgpls.v1.Link
-	46, // 27: bgpls.v1.ResolveResponse.prefixes:type_name -> bgpls.v1.Prefix
-	1,  // 28: bgpls.v1.WatchTopologyRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	47, // 29: bgpls.v1.WatchTopologyResponse.event:type_name -> bgpls.v1.TopologyEvent
-	1,  // 30: bgpls.v1.StreamSnapshotRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	42, // 31: bgpls.v1.StreamSnapshotResponse.domains:type_name -> bgpls.v1.Domain
-	44, // 32: bgpls.v1.StreamSnapshotResponse.nodes:type_name -> bgpls.v1.Node
-	45, // 33: bgpls.v1.StreamSnapshotResponse.links:type_name -> bgpls.v1.Link
-	46, // 34: bgpls.v1.StreamSnapshotResponse.prefixes:type_name -> bgpls.v1.Prefix
-	0,  // 35: bgpls.v1.ComputePathsRequest.metric:type_name -> bgpls.v1.PathMetric
-	26, // 36: bgpls.v1.ComputePathsRequest.constraints:type_name -> bgpls.v1.PathConstraints
-	44, // 37: bgpls.v1.PathHop.node:type_name -> bgpls.v1.Node
-	45, // 38: bgpls.v1.PathHop.outgoing_link:type_name -> bgpls.v1.Link
-	28, // 39: bgpls.v1.ComputedPath.hops:type_name -> bgpls.v1.PathHop
-	29, // 40: bgpls.v1.ComputePathsResponse.paths:type_name -> bgpls.v1.ComputedPath
-	33, // 41: bgpls.v1.AnalyzeImpactResponse.disconnected_components:type_name -> bgpls.v1.ImpactComponent
-	1,  // 42: bgpls.v1.ListChangesRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	41, // 43: bgpls.v1.ListChangesRequest.page:type_name -> bgpls.v1.Page
-	47, // 44: bgpls.v1.ListChangesResponse.events:type_name -> bgpls.v1.TopologyEvent
-	43, // 45: bgpls.v1.ListChangesResponse.page:type_name -> bgpls.v1.PageResult
-	1,  // 46: bgpls.v1.DiffTopologyRequest.filter:type_name -> bgpls.v1.TopologyFilter
-	47, // 47: bgpls.v1.DiffTopologyResponse.changes:type_name -> bgpls.v1.TopologyEvent
-	2,  // 48: bgpls.v1.TopologyService.GetSummary:input_type -> bgpls.v1.GetSummaryRequest
-	4,  // 49: bgpls.v1.TopologyService.ListDomains:input_type -> bgpls.v1.ListDomainsRequest
-	6,  // 50: bgpls.v1.TopologyService.GetNode:input_type -> bgpls.v1.GetNodeRequest
-	8,  // 51: bgpls.v1.TopologyService.ListNodes:input_type -> bgpls.v1.ListNodesRequest
-	10, // 52: bgpls.v1.TopologyService.GetNeighbors:input_type -> bgpls.v1.GetNeighborsRequest
-	12, // 53: bgpls.v1.TopologyService.GetLink:input_type -> bgpls.v1.GetLinkRequest
-	14, // 54: bgpls.v1.TopologyService.ListLinks:input_type -> bgpls.v1.ListLinksRequest
-	16, // 55: bgpls.v1.TopologyService.GetPrefix:input_type -> bgpls.v1.GetPrefixRequest
-	18, // 56: bgpls.v1.TopologyService.ListPrefixes:input_type -> bgpls.v1.ListPrefixesRequest
-	20, // 57: bgpls.v1.TopologyService.Resolve:input_type -> bgpls.v1.ResolveRequest
-	24, // 58: bgpls.v1.TopologyService.StreamSnapshot:input_type -> bgpls.v1.StreamSnapshotRequest
-	22, // 59: bgpls.v1.TopologyService.WatchTopology:input_type -> bgpls.v1.WatchTopologyRequest
-	27, // 60: bgpls.v1.PathService.ComputePaths:input_type -> bgpls.v1.ComputePathsRequest
-	31, // 61: bgpls.v1.PathService.AnalyzeImpact:input_type -> bgpls.v1.AnalyzeImpactRequest
-	34, // 62: bgpls.v1.HistoryService.ListChanges:input_type -> bgpls.v1.ListChangesRequest
-	36, // 63: bgpls.v1.HistoryService.DiffTopology:input_type -> bgpls.v1.DiffTopologyRequest
-	3,  // 64: bgpls.v1.TopologyService.GetSummary:output_type -> bgpls.v1.GetSummaryResponse
-	5,  // 65: bgpls.v1.TopologyService.ListDomains:output_type -> bgpls.v1.ListDomainsResponse
-	7,  // 66: bgpls.v1.TopologyService.GetNode:output_type -> bgpls.v1.GetNodeResponse
-	9,  // 67: bgpls.v1.TopologyService.ListNodes:output_type -> bgpls.v1.ListNodesResponse
-	11, // 68: bgpls.v1.TopologyService.GetNeighbors:output_type -> bgpls.v1.GetNeighborsResponse
-	13, // 69: bgpls.v1.TopologyService.GetLink:output_type -> bgpls.v1.GetLinkResponse
-	15, // 70: bgpls.v1.TopologyService.ListLinks:output_type -> bgpls.v1.ListLinksResponse
-	17, // 71: bgpls.v1.TopologyService.GetPrefix:output_type -> bgpls.v1.GetPrefixResponse
-	19, // 72: bgpls.v1.TopologyService.ListPrefixes:output_type -> bgpls.v1.ListPrefixesResponse
-	21, // 73: bgpls.v1.TopologyService.Resolve:output_type -> bgpls.v1.ResolveResponse
-	25, // 74: bgpls.v1.TopologyService.StreamSnapshot:output_type -> bgpls.v1.StreamSnapshotResponse
-	23, // 75: bgpls.v1.TopologyService.WatchTopology:output_type -> bgpls.v1.WatchTopologyResponse
-	30, // 76: bgpls.v1.PathService.ComputePaths:output_type -> bgpls.v1.ComputePathsResponse
-	32, // 77: bgpls.v1.PathService.AnalyzeImpact:output_type -> bgpls.v1.AnalyzeImpactResponse
-	35, // 78: bgpls.v1.HistoryService.ListChanges:output_type -> bgpls.v1.ListChangesResponse
-	37, // 79: bgpls.v1.HistoryService.DiffTopology:output_type -> bgpls.v1.DiffTopologyResponse
-	64, // [64:80] is the sub-list for method output_type
-	48, // [48:64] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	39, // 0: bgpls.v1.TopologyFilter.protocols:type_name -> bgpls.v1.Protocol
+	40, // 1: bgpls.v1.TopologyFilter.freshness:type_name -> bgpls.v1.Freshness
+	2,  // 2: bgpls.v1.GetSummaryRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	41, // 3: bgpls.v1.GetSummaryResponse.observed_at:type_name -> google.protobuf.Timestamp
+	42, // 4: bgpls.v1.ListDomainsRequest.page:type_name -> bgpls.v1.Page
+	43, // 5: bgpls.v1.ListDomainsResponse.domains:type_name -> bgpls.v1.Domain
+	44, // 6: bgpls.v1.ListDomainsResponse.page:type_name -> bgpls.v1.PageResult
+	45, // 7: bgpls.v1.GetNodeResponse.node:type_name -> bgpls.v1.Node
+	2,  // 8: bgpls.v1.ListNodesRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	42, // 9: bgpls.v1.ListNodesRequest.page:type_name -> bgpls.v1.Page
+	45, // 10: bgpls.v1.ListNodesResponse.nodes:type_name -> bgpls.v1.Node
+	44, // 11: bgpls.v1.ListNodesResponse.page:type_name -> bgpls.v1.PageResult
+	2,  // 12: bgpls.v1.GetNeighborsRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	45, // 13: bgpls.v1.GetNeighborsResponse.nodes:type_name -> bgpls.v1.Node
+	46, // 14: bgpls.v1.GetNeighborsResponse.links:type_name -> bgpls.v1.Link
+	46, // 15: bgpls.v1.GetLinkResponse.link:type_name -> bgpls.v1.Link
+	2,  // 16: bgpls.v1.ListLinksRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	42, // 17: bgpls.v1.ListLinksRequest.page:type_name -> bgpls.v1.Page
+	46, // 18: bgpls.v1.ListLinksResponse.links:type_name -> bgpls.v1.Link
+	44, // 19: bgpls.v1.ListLinksResponse.page:type_name -> bgpls.v1.PageResult
+	47, // 20: bgpls.v1.GetPrefixResponse.prefix:type_name -> bgpls.v1.Prefix
+	2,  // 21: bgpls.v1.ListPrefixesRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	42, // 22: bgpls.v1.ListPrefixesRequest.page:type_name -> bgpls.v1.Page
+	47, // 23: bgpls.v1.ListPrefixesResponse.prefixes:type_name -> bgpls.v1.Prefix
+	44, // 24: bgpls.v1.ListPrefixesResponse.page:type_name -> bgpls.v1.PageResult
+	45, // 25: bgpls.v1.ResolveResponse.nodes:type_name -> bgpls.v1.Node
+	46, // 26: bgpls.v1.ResolveResponse.links:type_name -> bgpls.v1.Link
+	47, // 27: bgpls.v1.ResolveResponse.prefixes:type_name -> bgpls.v1.Prefix
+	2,  // 28: bgpls.v1.WatchTopologyRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	48, // 29: bgpls.v1.WatchTopologyResponse.event:type_name -> bgpls.v1.TopologyEvent
+	2,  // 30: bgpls.v1.StreamSnapshotRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	43, // 31: bgpls.v1.StreamSnapshotResponse.domains:type_name -> bgpls.v1.Domain
+	45, // 32: bgpls.v1.StreamSnapshotResponse.nodes:type_name -> bgpls.v1.Node
+	46, // 33: bgpls.v1.StreamSnapshotResponse.links:type_name -> bgpls.v1.Link
+	47, // 34: bgpls.v1.StreamSnapshotResponse.prefixes:type_name -> bgpls.v1.Prefix
+	1,  // 35: bgpls.v1.PathConstraints.stale_policy:type_name -> bgpls.v1.StaleUtilizationPolicy
+	0,  // 36: bgpls.v1.ComputePathsRequest.metric:type_name -> bgpls.v1.PathMetric
+	27, // 37: bgpls.v1.ComputePathsRequest.constraints:type_name -> bgpls.v1.PathConstraints
+	45, // 38: bgpls.v1.PathHop.node:type_name -> bgpls.v1.Node
+	46, // 39: bgpls.v1.PathHop.outgoing_link:type_name -> bgpls.v1.Link
+	29, // 40: bgpls.v1.ComputedPath.hops:type_name -> bgpls.v1.PathHop
+	30, // 41: bgpls.v1.ComputePathsResponse.paths:type_name -> bgpls.v1.ComputedPath
+	34, // 42: bgpls.v1.AnalyzeImpactResponse.disconnected_components:type_name -> bgpls.v1.ImpactComponent
+	2,  // 43: bgpls.v1.ListChangesRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	42, // 44: bgpls.v1.ListChangesRequest.page:type_name -> bgpls.v1.Page
+	48, // 45: bgpls.v1.ListChangesResponse.events:type_name -> bgpls.v1.TopologyEvent
+	44, // 46: bgpls.v1.ListChangesResponse.page:type_name -> bgpls.v1.PageResult
+	2,  // 47: bgpls.v1.DiffTopologyRequest.filter:type_name -> bgpls.v1.TopologyFilter
+	48, // 48: bgpls.v1.DiffTopologyResponse.changes:type_name -> bgpls.v1.TopologyEvent
+	3,  // 49: bgpls.v1.TopologyService.GetSummary:input_type -> bgpls.v1.GetSummaryRequest
+	5,  // 50: bgpls.v1.TopologyService.ListDomains:input_type -> bgpls.v1.ListDomainsRequest
+	7,  // 51: bgpls.v1.TopologyService.GetNode:input_type -> bgpls.v1.GetNodeRequest
+	9,  // 52: bgpls.v1.TopologyService.ListNodes:input_type -> bgpls.v1.ListNodesRequest
+	11, // 53: bgpls.v1.TopologyService.GetNeighbors:input_type -> bgpls.v1.GetNeighborsRequest
+	13, // 54: bgpls.v1.TopologyService.GetLink:input_type -> bgpls.v1.GetLinkRequest
+	15, // 55: bgpls.v1.TopologyService.ListLinks:input_type -> bgpls.v1.ListLinksRequest
+	17, // 56: bgpls.v1.TopologyService.GetPrefix:input_type -> bgpls.v1.GetPrefixRequest
+	19, // 57: bgpls.v1.TopologyService.ListPrefixes:input_type -> bgpls.v1.ListPrefixesRequest
+	21, // 58: bgpls.v1.TopologyService.Resolve:input_type -> bgpls.v1.ResolveRequest
+	25, // 59: bgpls.v1.TopologyService.StreamSnapshot:input_type -> bgpls.v1.StreamSnapshotRequest
+	23, // 60: bgpls.v1.TopologyService.WatchTopology:input_type -> bgpls.v1.WatchTopologyRequest
+	28, // 61: bgpls.v1.PathService.ComputePaths:input_type -> bgpls.v1.ComputePathsRequest
+	32, // 62: bgpls.v1.PathService.AnalyzeImpact:input_type -> bgpls.v1.AnalyzeImpactRequest
+	35, // 63: bgpls.v1.HistoryService.ListChanges:input_type -> bgpls.v1.ListChangesRequest
+	37, // 64: bgpls.v1.HistoryService.DiffTopology:input_type -> bgpls.v1.DiffTopologyRequest
+	4,  // 65: bgpls.v1.TopologyService.GetSummary:output_type -> bgpls.v1.GetSummaryResponse
+	6,  // 66: bgpls.v1.TopologyService.ListDomains:output_type -> bgpls.v1.ListDomainsResponse
+	8,  // 67: bgpls.v1.TopologyService.GetNode:output_type -> bgpls.v1.GetNodeResponse
+	10, // 68: bgpls.v1.TopologyService.ListNodes:output_type -> bgpls.v1.ListNodesResponse
+	12, // 69: bgpls.v1.TopologyService.GetNeighbors:output_type -> bgpls.v1.GetNeighborsResponse
+	14, // 70: bgpls.v1.TopologyService.GetLink:output_type -> bgpls.v1.GetLinkResponse
+	16, // 71: bgpls.v1.TopologyService.ListLinks:output_type -> bgpls.v1.ListLinksResponse
+	18, // 72: bgpls.v1.TopologyService.GetPrefix:output_type -> bgpls.v1.GetPrefixResponse
+	20, // 73: bgpls.v1.TopologyService.ListPrefixes:output_type -> bgpls.v1.ListPrefixesResponse
+	22, // 74: bgpls.v1.TopologyService.Resolve:output_type -> bgpls.v1.ResolveResponse
+	26, // 75: bgpls.v1.TopologyService.StreamSnapshot:output_type -> bgpls.v1.StreamSnapshotResponse
+	24, // 76: bgpls.v1.TopologyService.WatchTopology:output_type -> bgpls.v1.WatchTopologyResponse
+	31, // 77: bgpls.v1.PathService.ComputePaths:output_type -> bgpls.v1.ComputePathsResponse
+	33, // 78: bgpls.v1.PathService.AnalyzeImpact:output_type -> bgpls.v1.AnalyzeImpactResponse
+	36, // 79: bgpls.v1.HistoryService.ListChanges:output_type -> bgpls.v1.ListChangesResponse
+	38, // 80: bgpls.v1.HistoryService.DiffTopology:output_type -> bgpls.v1.DiffTopologyResponse
+	65, // [65:81] is the sub-list for method output_type
+	49, // [49:65] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_bgpls_v1_topology_proto_init() }
@@ -2726,7 +2831,7 @@ func file_bgpls_v1_topology_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bgpls_v1_topology_proto_rawDesc), len(file_bgpls_v1_topology_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   3,

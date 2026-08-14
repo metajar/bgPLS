@@ -20,6 +20,9 @@ bgp:
 retention:
   duration: 720h
   max_bytes: 53687091200
+utilization:
+  stale_after: 45s
+  sweep_after: 10m
 domains:
   - id: core
     name: Core network

@@ -13,10 +13,20 @@ import (
 	bgplsv1 "github.com/bgpls/bgpls/gen/bgpls/v1"
 	"github.com/bgpls/bgpls/internal/store"
 	"github.com/bgpls/bgpls/internal/topology"
+	"github.com/bgpls/bgpls/internal/utilization"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type TopologyService struct{ Store *store.Store }
+type TopologyService struct {
+	Store   *store.Store
+	Overlay *utilization.Overlay
+}
+
+func (s *TopologyService) attach(links []*bgplsv1.Link) {
+	if s != nil && s.Overlay != nil {
+		s.Overlay.Attach(links)
+	}
+}
 
 func apiError(err error) error {
 	if errors.Is(err, store.ErrNotFound) {
@@ -140,6 +150,7 @@ func (s *TopologyService) GetLink(_ context.Context, req *connect.Request[bgplsv
 	}
 	for _, v := range snap.Links {
 		if v.GetMeta().GetId() == req.Msg.Id && (req.Msg.IncludeStale || v.GetMeta().Freshness == bgplsv1.Freshness_FRESHNESS_ACTIVE) {
+			s.attach([]*bgplsv1.Link{v})
 			return connect.NewResponse(&bgplsv1.GetLinkResponse{Link: v, Revision: snap.Revision}), nil
 		}
 	}
@@ -165,6 +176,7 @@ func (s *TopologyService) ListLinks(_ context.Context, req *connect.Request[bgpl
 	if more {
 		out = out[:size]
 	}
+	s.attach(out)
 	token := ""
 	if len(out) > 0 {
 		token = nextToken(out[len(out)-1].GetMeta().GetId(), more)
@@ -238,6 +250,7 @@ func (s *TopologyService) GetNeighbors(_ context.Context, req *connect.Request[b
 			out.Nodes = append(out.Nodes, nodes[other])
 		}
 	}
+	s.attach(out.Links)
 	return connect.NewResponse(out), nil
 }
 func (s *TopologyService) Resolve(_ context.Context, req *connect.Request[bgplsv1.ResolveRequest]) (*connect.Response[bgplsv1.ResolveResponse], error) {
@@ -270,6 +283,7 @@ func (s *TopologyService) Resolve(_ context.Context, req *connect.Request[bgplsv
 			}
 		}
 	}
+	s.attach(out.Links)
 	for _, p := range snap.Prefixes {
 		if req.Msg.DomainId != "" && p.GetMeta().DomainId != req.Msg.DomainId {
 			continue
@@ -308,6 +322,7 @@ func (s *TopologyService) StreamSnapshot(_ context.Context, req *connect.Request
 			}
 			li++
 		}
+		s.attach(msg.Links)
 		for len(msg.Nodes)+len(msg.Links)+len(msg.Prefixes) < chunkSize && pi < len(snap.Prefixes) {
 			if prefixMatch(snap.Prefixes[pi], req.Msg.Filter) {
 				msg.Prefixes = append(msg.Prefixes, snap.Prefixes[pi])
@@ -341,7 +356,10 @@ func (s *TopologyService) WatchTopology(ctx context.Context, req *connect.Reques
 	return ctx.Err()
 }
 
-type PathService struct{ Store *store.Store }
+type PathService struct {
+	Store   *store.Store
+	Overlay *utilization.Overlay
+}
 
 func (p *PathService) ComputePaths(_ context.Context, req *connect.Request[bgplsv1.ComputePathsRequest]) (*connect.Response[bgplsv1.ComputePathsResponse], error) {
 	snap, err := p.Store.SnapshotAt(req.Msg.Revision)
@@ -353,7 +371,11 @@ func (p *PathService) ComputePaths(_ context.Context, req *connect.Request[bgpls
 	if source == "" || destination == "" {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("source or destination could not be resolved in the requested domain"))
 	}
-	graph := topology.NewGraph(snap.Revision, filterDomainNodes(snap.Nodes, req.Msg.DomainId), filterDomainLinks(snap.Links, req.Msg.DomainId))
+	links := filterDomainLinks(snap.Links, req.Msg.DomainId)
+	if p.Overlay != nil {
+		p.Overlay.Attach(links)
+	}
+	graph := topology.NewGraph(snap.Revision, filterDomainNodes(snap.Nodes, req.Msg.DomainId), links)
 	paths, err := graph.ComputeMany(source, destination, req.Msg.Metric, req.Msg.Constraints, int(req.Msg.MaxPaths))
 	if err != nil {
 		return connect.NewResponse(&bgplsv1.ComputePathsResponse{Revision: snap.Revision, Explanation: err.Error()}), nil

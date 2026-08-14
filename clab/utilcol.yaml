@@ -1,0 +1,53 @@
+server:
+  url: https://collector:7443
+  ca: /etc/bgpls/pki/ca.crt
+  cert: /etc/bgpls/pki/utilcol.crt
+  key: /etc/bgpls/pki/utilcol.key
+sample_interval: 10s
+report_interval: 10s
+metrics_listen: 0.0.0.0:9091
+targets:
+  - name: srl1
+    driver: gnmi
+    address: srl1:57400
+    username: admin
+    password: NokiaSrl1!
+    tls: { insecure_skip_verify: true }
+  - name: srl2
+    driver: gnmi
+    address: srl2:57400
+    username: admin
+    password: NokiaSrl1!
+    tls: { insecure_skip_verify: true }
+  - name: r1
+    driver: snmp
+    address: r1:161
+    community: public
+  - name: r2
+    driver: snmp
+    address: r2:161
+    community: public
+  - name: r3
+    driver: snmp
+    address: r3:161
+    community: public
+  - name: r4
+    driver: snmp
+    address: r4:161
+    community: public
+  - name: r5
+    driver: snmp
+    address: r5:161
+    community: public
+  - name: r6
+    driver: snmp
+    address: r6:161
+    community: public
+  - name: r7
+    driver: snmp
+    address: r7:161
+    community: public
+  - name: r8
+    driver: snmp
+    address: r8:161
+    community: public

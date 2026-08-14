@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package bgpls.v1;
+
+import "bgpls/v1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bgpls/bgpls/gen/bgpls/v1;bgplsv1";
+
+message ReportInterfaceUtilizationRequest {
+  repeated InterfaceUtilization interfaces = 1;
+}
+
+message ReportInterfaceUtilizationResponse {
+  uint32 accepted = 1;
+  uint32 correlated = 2;
+  uint32 uncorrelated = 3;
+}
+
+message GetLinkUtilizationRequest {
+  repeated string link_ids = 1;
+  string domain_id = 2;
+}
+
+message GetLinkUtilizationResponse {
+  repeated LinkUtilization links = 1;
+  google.protobuf.Timestamp observed_at = 2;
+}
+
+message WatchLinkUtilizationRequest {
+  repeated string link_ids = 1;
+}
+
+message WatchLinkUtilizationResponse {
+  LinkUtilization utilization = 1;
+  string operation = 2;
+}
+
+message GetUncorrelatedInterfacesRequest {}
+
+message GetUncorrelatedInterfacesResponse {
+  repeated UncorrelatedInterface interfaces = 1;
+}
+
+service EnrichmentService {
+  rpc ReportInterfaceUtilization(ReportInterfaceUtilizationRequest) returns (ReportInterfaceUtilizationResponse);
+  rpc GetLinkUtilization(GetLinkUtilizationRequest) returns (GetLinkUtilizationResponse);
+  rpc WatchLinkUtilization(WatchLinkUtilizationRequest) returns (stream WatchLinkUtilizationResponse);
+  rpc GetUncorrelatedInterfaces(GetUncorrelatedInterfacesRequest) returns (GetUncorrelatedInterfacesResponse);
+}

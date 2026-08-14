@@ -49,56 +49,56 @@ topology:
 
     r1:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r1.conf:/etc/frr/frr.conf
     r2:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r2.conf:/etc/frr/frr.conf
     r3:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r3.conf:/etc/frr/frr.conf
     r4:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r4.conf:/etc/frr/frr.conf
     r5:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r5.conf:/etc/frr/frr.conf
     r6:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r6.conf:/etc/frr/frr.conf
     r7:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
         - frr/routers/r7.conf:/etc/frr/frr.conf
     r8:
       kind: linux
-      image: quay.io/frrouting/frr:10.7.0
+      image: bgpls-frr:local
       binds:
         - frr/daemons:/etc/frr/daemons:ro
         - frr/vtysh.conf:/etc/frr/vtysh.conf:ro
@@ -110,6 +110,30 @@ topology:
     srl2:
       kind: nokia_srlinux
       startup-config: srl/srl2.cli
+
+    utilcol:
+      kind: linux
+      image: bgpls:local
+      binds:
+        - utilcol.yaml:/etc/bgpls/utilcol.yaml:ro
+        - pki:/etc/bgpls/pki:ro
+      entrypoint: /usr/local/bin/utilcol
+      command: --config /etc/bgpls/utilcol.yaml
+
+    tgen1:
+      kind: linux
+      image: bgpls-tgen:local
+      exec:
+        - ip addr add 10.10.1.2/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.10.1.1
+    tgen2:
+      kind: linux
+      image: bgpls-tgen:local
+      exec:
+        - ip addr add 10.10.2.2/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.10.2.1
 
   links:
     # BGP-LS transport only (not in IS-IS)
@@ -134,3 +158,5 @@ topology:
     - endpoints: ["r7:eth4", "srl1:ethernet-1/1"]
     - endpoints: ["r8:eth4", "srl2:ethernet-1/1"]
     - endpoints: ["srl1:ethernet-1/2", "srl2:ethernet-1/2"]
+    - endpoints: ["tgen1:eth1", "r1:eth5"]
+    - endpoints: ["tgen2:eth1", "srl2:ethernet-1/3"]

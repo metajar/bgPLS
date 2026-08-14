@@ -18,14 +18,16 @@ For a copy-paste setup from local smoke test through a real BGP-LS peer, see the
   withdrawal fallback.
 - Persistent revisions, resumable event watches, point-in-time reconstruction,
   topology diffs, and configurable age/size retention.
-- Current and historical topology APIs, constrained shortest path queries, and
-  node/link failure impact analysis.
+- Current and historical topology APIs, constrained shortest path queries
+  (including live available-bandwidth constraints), and node/link failure
+  impact analysis.
 - Persistent peer CRUD, session control, config import/export, TCP MD5, GTSM,
   eBGP multihop, and receive-only import/export policy.
 - TLS 1.3 mutual authentication with URI/DNS SAN role mappings for reader,
   operator, and admin access.
-- JSON-oriented CLI, Prometheus endpoint, structured logging, health check, and
-  atomic TLS/RBAC reload on `SIGHUP`.
+- JSON-oriented CLI, Prometheus endpoint, structured logging, health check,
+  atomic TLS/RBAC reload on `SIGHUP`, and a live utilization overlay (gNMI/SNMP
+  via `utilcol`) with a topology heatmap at `/ui/`.
 
 ## Containerlab test fabric
 
@@ -35,14 +37,18 @@ On a Linux host with Docker and [Containerlab](https://containerlab.dev/install/
 make clab
 ```
 
-That deploys eight FRR routers, two SR Linux nodes, a bgPLS collector, and lab mTLS certificates. When it finishes, query BGP-LS topology immediately:
+That deploys eight FRR routers, two SR Linux nodes, a bgPLS collector, a
+utilization poller, iperf3 traffic generators, and lab mTLS certificates. When
+it finishes, query BGP-LS topology immediately:
 
 ```sh
 ./clab/scripts/bgpls.sh topology summary
 ./clab/scripts/bgpls.sh topology nodes --domain core
 ./clab/scripts/bgpls.sh path compute --domain core --source r1 --destination srl2 --metric igp
+./clab/scripts/traffic.sh demo
 ```
 
+Live link utilization is documented in [docs/utilization.md](docs/utilization.md).
 The API listens on `https://127.0.0.1:7443`. See [clab/README.md](clab/README.md) for the topology, certificates, and destroy/status commands.
 
 ## Build and test
@@ -108,7 +114,8 @@ native gRPC and gRPC-Web requests on the same service paths.
   state. The store interface leaves room for periodic materialized checkpoints
   without changing the API.
 - HA replication, cross-domain path stitching, SR/SRv6 SID-stack generation,
-  alerting, and a web UI remain post-v1 work.
+  and alerting remain post-v1 work. A first topology UI with live utilization
+  is served at `/ui/`.
 - Unsupported optional BGP-LS extensions are intentionally ignored. They do not
   invalidate supported node, link, prefix, or TE data, and bounded Prometheus
   counters expose accepted, stale, withdrawn, ignored, and rejected paths.

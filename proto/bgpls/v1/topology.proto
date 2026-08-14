@@ -58,6 +58,13 @@ enum PathMetric {
   PATH_METRIC_IGP = 1;
   PATH_METRIC_TE = 2;
   PATH_METRIC_DELAY = 3;
+  PATH_METRIC_AVAILABLE_BW = 4;
+}
+
+enum StaleUtilizationPolicy {
+  STALE_UTILIZATION_POLICY_UNSPECIFIED = 0;
+  STALE_UTILIZATION_POLICY_TREAT_AS_UNKNOWN = 1;
+  STALE_UTILIZATION_POLICY_FAIL_LINK = 2;
 }
 
 message PathConstraints {
@@ -68,6 +75,9 @@ message PathConstraints {
   repeated string include_node_ids = 5;
   repeated string avoid_node_ids = 6;
   repeated string avoid_link_ids = 7;
+  uint64 min_available_bps = 8;
+  StaleUtilizationPolicy stale_policy = 9;
+  repeated uint32 exclude_srlgs = 10;
 }
 
 message ComputePathsRequest {
@@ -80,7 +90,14 @@ message ComputePathsRequest {
   uint64 revision = 7;
 }
 message PathHop { uint32 index = 1; Node node = 2; Link outgoing_link = 3; }
-message ComputedPath { repeated PathHop hops = 1; uint64 total_metric = 2; uint64 total_delay_microseconds = 3; double bottleneck_bandwidth_bytes_per_second = 4; }
+message ComputedPath {
+  repeated PathHop hops = 1;
+  uint64 total_metric = 2;
+  uint64 total_delay_microseconds = 3;
+  double bottleneck_bandwidth_bytes_per_second = 4;
+  uint64 bottleneck_available_bps = 5;
+  bool used_stale_data = 6;
+}
 message ComputePathsResponse { repeated ComputedPath paths = 1; uint64 revision = 2; string explanation = 3; }
 
 message AnalyzeImpactRequest {
