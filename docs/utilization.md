@@ -63,12 +63,14 @@ bgpls topology links --domain core --show-utilization
 
 ## Lab demo
 
-`make clab` starts snmpd on the FRR nodes, gNMI on SR Linux, utilcol, and two
+`make clab` starts snmpd on the FRR nodes, gNMI on SR Linux (`insecure-mgmt` on
+port 57401, plaintext), utilcol, and two
 iperf3 traffic generators (`tgen1` behind r1, `tgen2` behind srl2). Then:
 
 ```sh
 ./clab/scripts/traffic.sh demo
 ```
 
-That starts a baseline flow, computes a path, surges near line rate, and checks
-that CSPF moves off the hot link (or returns no-path).
+That starts a baseline UDP flow, computes a path, surges, and checks that CSPF
+moves off the hot link (or returns no-path). Lab iperf is UDP because TCP on
+the Containerlab SR Linux path tops out around 70 Mbps regardless of `--rate`.

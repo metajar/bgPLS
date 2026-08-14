@@ -48,10 +48,16 @@ start_flow() {
   local t=$2
   ensure_server
   docker exec "$TGEN1" sh -c 'pkill iperf3 >/dev/null 2>&1 || true' || true
+  # TCP on this Containerlab path loses packets (SRL/veth), cwnd collapses to
+  # ~70Mbps, and -b is only a cap. UDP offers the requested rate onto the
+  # fabric so SNMP/gNMI see it. MSS/payload stay at 1400: tgen/SRL are 1500,
+  # FRR veths are jumbo.
+  local args=( -c "$DST_IP" -B 10.10.1.2 -u -b "$bps" -l 1400 )
+  echo "starting UDP ${bps} tgen1 -> tgen2 for ${t}s (TCP cannot reach this rate here)" >&2
   if [[ "$t" == "0" ]]; then
-    docker exec -d "$TGEN1" iperf3 -c "$DST_IP" -b "$bps" -t 86400 -P 1
+    docker exec -d "$TGEN1" iperf3 "${args[@]}" -t 86400
   else
-    docker exec -d "$TGEN1" iperf3 -c "$DST_IP" -b "$bps" -t "$t" -P 1
+    docker exec -d "$TGEN1" iperf3 "${args[@]}" -t "$t"
   fi
 }
 

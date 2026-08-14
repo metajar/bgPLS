@@ -17,6 +17,9 @@ func TestHandlerServesIndex(t *testing.T) {
 	if !strings.Contains(body, "cytoscape") || !strings.Contains(body, "bgPLS") {
 		t.Fatalf("index did not embed the topology page: %s", body)
 	}
+	if !strings.Contains(body, `data-stat="util"`) {
+		t.Fatalf("index missing utilization stat: %s", body)
+	}
 	if rec.Header().Get("Cache-Control") != "no-cache" {
 		t.Fatalf("index cache = %q", rec.Header().Get("Cache-Control"))
 	}

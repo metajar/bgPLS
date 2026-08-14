@@ -7,18 +7,19 @@ sample_interval: 10s
 report_interval: 10s
 metrics_listen: 0.0.0.0:9091
 targets:
+  # SR Linux 26.7 insecure-mgmt gRPC (plaintext gNMI) listens on 57401, not 57400.
   - name: srl1
     driver: gnmi
-    address: srl1:57400
+    address: srl1:57401
     username: admin
     password: NokiaSrl1!
-    tls: { insecure_skip_verify: true }
+    tls: { insecure: true }
   - name: srl2
     driver: gnmi
-    address: srl2:57400
+    address: srl2:57401
     username: admin
     password: NokiaSrl1!
-    tls: { insecure_skip_verify: true }
+    tls: { insecure: true }
   - name: r1
     driver: snmp
     address: r1:161

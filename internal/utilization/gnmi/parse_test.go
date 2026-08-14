@@ -30,8 +30,27 @@ func TestPathStringExtractsInterface(t *testing.T) {
 	}
 }
 
-func TestStripPrefix(t *testing.T) {
-	if got := stripPrefix("10.1.79.2/30"); got != "10.1.79.2" {
-		t.Fatalf("got %q", got)
+func TestMergePathUsesPrefixInterface(t *testing.T) {
+	prefix := &gnmi.Path{Elem: []*gnmi.PathElem{{Name: "interface", Key: map[string]string{"name": "ethernet-1/2"}}}}
+	p := &gnmi.Path{Elem: []*gnmi.PathElem{{Name: "statistics"}, {Name: "in-octets"}}}
+	iface, leaf, _ := mergePath(prefix, p)
+	if iface != "ethernet-1/2" || leaf != "in-octets" {
+		t.Fatalf("iface=%q leaf=%q", iface, leaf)
+	}
+}
+
+func TestJSONMapCounters(t *testing.T) {
+	v := &gnmi.TypedValue{Value: &gnmi.TypedValue_JsonIetfVal{JsonIetfVal: []byte(`{"in-octets":"123","out-octets":456}`)}}
+	m, ok := jsonMap(v)
+	if !ok {
+		t.Fatal("expected json map")
+	}
+	in, ok := anyUint(m["in-octets"])
+	if !ok || in != 123 {
+		t.Fatalf("in-octets=%d ok=%v", in, ok)
+	}
+	out, ok := anyUint(m["out-octets"])
+	if !ok || out != 456 {
+		t.Fatalf("out-octets=%d ok=%v", out, ok)
 	}
 }

@@ -93,7 +93,7 @@ type ifRow struct {
 func (c *Collector) client() (*gosnmp.GoSNMP, error) {
 	host, port := splitAddr(c.cfg.Address)
 	client := &gosnmp.GoSNMP{
-		Target:    host,
+		Target:    utilization.PreferIPv4Host(host),
 		Port:      port,
 		Community: c.cfg.Community,
 		Version:   gosnmp.Version2c,
@@ -133,7 +133,7 @@ func (c *Collector) poll(ctx context.Context, addrs map[int]addrSet, out chan<- 
 			row = &ifRow{}
 			rows[idx] = row
 		}
-		row.name = fmt.Sprint(pdu.Value)
+		row.name = pduString(pdu)
 	})
 	walk(ifHCInOctetsOID, func(idx int, pdu gosnmp.SnmpPDU) {
 		row := rows[idx]
@@ -282,6 +282,17 @@ func pduUint(pdu gosnmp.SnmpPDU) uint64 {
 	default:
 		n, _ := strconv.ParseUint(fmt.Sprint(v), 10, 64)
 		return n
+	}
+}
+
+func pduString(pdu gosnmp.SnmpPDU) string {
+	switch v := pdu.Value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	default:
+		return fmt.Sprint(v)
 	}
 }
 

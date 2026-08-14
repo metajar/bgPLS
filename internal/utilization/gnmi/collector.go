@@ -73,7 +73,10 @@ func (c *Collector) Run(ctx context.Context, out chan<- utilization.InterfaceSam
 func (c *Collector) subscribe(ctx context.Context, out chan<- utilization.InterfaceSample) error {
 	dialCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(dialCtx, c.cfg.Address, c.dialOptions()...)
+	conn, err := grpc.DialContext(dialCtx, c.cfg.Address, append(c.dialOptions(),
+		grpc.WithContextDialer(utilization.GRPCDialer),
+		grpc.WithBlock(),
+	)...)
 	if err != nil {
 		return err
 	}
@@ -86,14 +89,17 @@ func (c *Collector) subscribe(ctx context.Context, out chan<- utilization.Interf
 	}
 	ns := uint64(c.cfg.SampleInterval.Nanoseconds())
 	req := &gnmipb.SubscribeRequest{Request: &gnmipb.SubscribeRequest_Subscribe{Subscribe: &gnmipb.SubscriptionList{
+		Prefix:   &gnmipb.Path{Origin: "native"},
 		Mode:     gnmipb.SubscriptionList_STREAM,
-		Encoding: gnmipb.Encoding_JSON_IETF,
+		Encoding: gnmipb.Encoding_PROTO,
 		Subscription: []*gnmipb.Subscription{
 			sampleSub([]string{"interface"}, "statistics", "in-octets", ns),
 			sampleSub([]string{"interface"}, "statistics", "out-octets", ns),
 			sampleSub([]string{"interface", "ethernet"}, "port-speed", "", ns),
-			onchangeSub([]string{"interface", "subinterface", "ipv4"}, "address"),
-			onchangeSub([]string{"interface", "subinterface", "ipv6"}, "address"),
+			sampleSub([]string{"interface", "subinterface", "ipv4", "address"}, "", "ip-prefix", ns),
+			sampleSub([]string{"interface", "subinterface", "ipv6", "address"}, "", "ip-prefix", ns),
+			onchangeSub([]string{"interface", "subinterface", "ipv4", "address"}, "ip-prefix"),
+			onchangeSub([]string{"interface", "subinterface", "ipv6", "address"}, "ip-prefix"),
 		},
 	}}}
 	if err := stream.Send(req); err != nil {
@@ -106,6 +112,13 @@ func (c *Collector) subscribe(ctx context.Context, out chan<- utilization.Interf
 		if err != nil {
 			return err
 		}
+		if e := resp.GetError(); e != nil && e.GetMessage() != "" {
+			return fmt.Errorf("gNMI subscribe error: %s", e.GetMessage())
+		}
+		if resp.GetSyncResponse() {
+			slog.Info("gNMI sync complete", "target", c.cfg.Name, "interfaces", len(state))
+			continue
+		}
 		notif := resp.GetUpdate()
 		if notif == nil {
 			continue
@@ -114,23 +127,19 @@ func (c *Collector) subscribe(ctx context.Context, out chan<- utilization.Interf
 		if ts.IsZero() || notif.Timestamp == 0 {
 			ts = time.Now().UTC()
 		}
-		prefixIface, _, _ := pathString(notif.Prefix)
 		mu.Lock()
 		for _, upd := range notif.Update {
-			c.applyUpdate(state, prefixIface, upd, ts, out)
+			c.applyUpdate(state, notif.Prefix, upd, ts, out)
 		}
 		mu.Unlock()
 	}
 }
 
-func (c *Collector) applyUpdate(state map[string]*ifaceState, prefixIface string, upd *gnmipb.Update, ts time.Time, out chan<- utilization.InterfaceSample) {
+func (c *Collector) applyUpdate(state map[string]*ifaceState, prefix *gnmipb.Path, upd *gnmipb.Update, ts time.Time, out chan<- utilization.InterfaceSample) {
 	if upd == nil {
 		return
 	}
-	iface, leaf, keys := pathString(upd.Path)
-	if iface == "" {
-		iface = prefixIface
-	}
+	iface, leaf, keys := mergePath(prefix, upd.Path)
 	if iface == "" || iface == "*" {
 		return
 	}
@@ -139,6 +148,7 @@ func (c *Collector) applyUpdate(state map[string]*ifaceState, prefixIface string
 		st = &ifaceState{name: iface}
 		state[iface] = st
 	}
+	joined := pathJoin(prefix) + pathJoin(upd.Path)
 	switch leaf {
 	case "in-octets":
 		if n, ok := parseUint(upd.Val); ok {
@@ -159,11 +169,52 @@ func (c *Collector) applyUpdate(state map[string]*ifaceState, prefixIface string
 		if addr == "" {
 			addr = keys["ip-prefix"]
 		}
-		if strings.Contains(pathJoin(upd.Path), "ipv6") {
+		if strings.Contains(joined, "ipv6") {
 			st.ipv6 = addUnique(st.ipv6, addr)
 		} else {
 			st.ipv4 = addUnique(st.ipv4, addr)
 		}
+	case "statistics", "ethernet", "interface", "ipv4", "ipv6", "subinterface":
+		c.applyJSON(st, leaf, upd.Val, joined, ts, out)
+	}
+}
+
+func (c *Collector) applyJSON(st *ifaceState, leaf string, val *gnmipb.TypedValue, joined string, ts time.Time, out chan<- utilization.InterfaceSample) {
+	m, ok := jsonMap(val)
+	if !ok {
+		return
+	}
+	c.applyJSONMap(st, leaf, m, joined, ts, out)
+}
+
+func (c *Collector) applyJSONMap(st *ifaceState, leaf string, m map[string]any, joined string, ts time.Time, out chan<- utilization.InterfaceSample) {
+	if n, ok := anyUint(m["in-octets"]); ok {
+		st.inOctets = n
+		st.haveIn = true
+	}
+	if n, ok := anyUint(m["out-octets"]); ok {
+		st.outOctets = n
+		st.haveOut = true
+	}
+	if v, ok := m["port-speed"]; ok {
+		st.speedBps = mapPortSpeed(fmt.Sprint(v))
+	}
+	if v, ok := m["ip-prefix"]; ok {
+		addr := fmt.Sprint(v)
+		if strings.Contains(joined+leaf, "ipv6") {
+			st.ipv6 = addUnique(st.ipv6, addr)
+		} else {
+			st.ipv4 = addUnique(st.ipv4, addr)
+		}
+	}
+	if stats, ok := m["statistics"].(map[string]any); ok {
+		c.applyJSONMap(st, "statistics", stats, joined, ts, out)
+	}
+	if eth, ok := m["ethernet"].(map[string]any); ok {
+		c.applyJSONMap(st, "ethernet", eth, joined, ts, out)
+	}
+	if st.haveIn || st.haveOut {
+		c.emit(st, ts, out)
 	}
 }
 
@@ -217,6 +268,9 @@ func sampleSub(parents []string, mid, leaf string, interval uint64) *gnmipb.Subs
 		if name == "subinterface" {
 			elem.Key = map[string]string{"index": "*"}
 		}
+		if name == "address" {
+			elem.Key = map[string]string{"ip-prefix": "*"}
+		}
 		elems = append(elems, elem)
 	}
 	if mid != "" && mid != parents[len(parents)-1] {
@@ -242,6 +296,9 @@ func onchangeSub(parents []string, leaf string) *gnmipb.Subscription {
 		}
 		if name == "subinterface" {
 			elem.Key = map[string]string{"index": "*"}
+		}
+		if name == "address" {
+			elem.Key = map[string]string{"ip-prefix": "*"}
 		}
 		elems = append(elems, elem)
 	}

@@ -113,8 +113,10 @@
     const stale = u.staleAt && Date.parse(u.staleAt) < Date.now();
     if (stale) return "util-unknown";
     const r = Number(u.utilization) || 0;
-    if (r > 0.8) return "util-high";
-    if (r >= 0.4) return "util-mid";
+    const load = Math.max(num(u.inBps), num(u.outBps));
+    // Virt NICs often advertise 10G, so also color by absolute load for the lab heatmap.
+    if (r > 0.8 || load >= 500e6) return "util-high";
+    if (r >= 0.4 || load >= 50e6) return "util-mid";
     return "util-low";
   }
 
@@ -129,6 +131,29 @@
       i++;
     }
     return `${v >= 10 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`;
+  }
+
+  function formatUtilPct(u) {
+    if (!u || !u.utilizationKnown) return "unknown";
+    const pct = (Number(u.utilization) || 0) * 100;
+    if (pct <= 0) return "0%";
+    if (pct < 0.1) return "<0.1%";
+    if (pct < 1) return `${pct.toFixed(2)}%`;
+    return `${pct.toFixed(1)}%`;
+  }
+
+  function loadBps(u) {
+    return Math.max(num(u && u.inBps), num(u && u.outBps));
+  }
+
+  function edgeLabel(link, u) {
+    const metric = num(link.igpMetric);
+    const parts = [];
+    if (metric) parts.push(String(metric));
+    if (u && u.utilizationKnown && loadBps(u) > 0) {
+      parts.push(formatBits(loadBps(u)));
+    }
+    return parts.join(" · ");
   }
 
   function parseBw(s) {
@@ -181,17 +206,17 @@
       }
       const stale = l.meta && l.meta.freshness && l.meta.freshness !== "FRESHNESS_ACTIVE";
       const conflicts = l.meta && l.meta.conflicts && l.meta.conflicts.length > 0;
-      const metric = num(l.igpMetric);
       const u = l.utilization || {};
       const uClass = utilClass(u);
       const speed = num(u.speedBps);
-      const width = speed > 25e9 ? 3.2 : speed > 1e9 ? 2.2 : 1.6;
+      const load = loadBps(u);
+      const width = load >= 500e6 ? 4 : load >= 50e6 ? 3 : speed > 25e9 ? 3.2 : speed > 1e9 ? 2.2 : 1.6;
       elements.push({
         data: {
           id: l.meta.id,
           source: l.localNodeId,
           target: l.remoteNodeId,
-          label: metric ? String(metric) : "",
+          label: edgeLabel(l, u),
           kind: "link",
           stale,
           conflicts,
@@ -254,6 +279,7 @@
           label: "data(label)",
           "font-size": 9,
           color: "#8b98a8",
+          "text-wrap": "wrap",
           "text-background-color": "#0c1117",
           "text-background-opacity": 0.7,
           "text-background-padding": 2,
@@ -378,7 +404,7 @@
         row("SRLGs", entity.srlgs),
         row("Adjacency SIDs", entity.adjacencySids),
         row("Utilization", entity.utilization && entity.utilization.utilizationKnown
-          ? `${Math.round((Number(entity.utilization.utilization) || 0) * 100)}%  in ${formatBits(entity.utilization.inBps)} / out ${formatBits(entity.utilization.outBps)}`
+          ? `${formatUtilPct(entity.utilization)}  in ${formatBits(entity.utilization.inBps)} / out ${formatBits(entity.utilization.outBps)}`
           : "unknown"),
         row("Available", entity.utilization ? formatBits(entity.utilization.availableBps) : ""),
         row("Observed", entity.utilization && entity.utilization.observedAt),
@@ -450,9 +476,9 @@
     const items = [...seen.entries()].map(
       ([label, color]) => `<li><span class="swatch" style="--c:${color}"></span>${escapeHtml(label)}</li>`
     );
-    items.push('<li><span class="swatch" style="--c:#34d399"></span>Util &lt; 40%</li>');
-    items.push('<li><span class="swatch" style="--c:#fbbf24"></span>Util 40–80%</li>');
-    items.push('<li><span class="swatch" style="--c:#f87171"></span>Util &gt; 80%</li>');
+    items.push('<li><span class="swatch" style="--c:#34d399"></span>Util low / &lt;50 Mbps</li>');
+    items.push('<li><span class="swatch" style="--c:#fbbf24"></span>Util 40–80% or ≥50 Mbps</li>');
+    items.push('<li><span class="swatch" style="--c:#f87171"></span>Util &gt; 80% or ≥500 Mbps</li>');
     items.push('<li><span class="swatch" style="--c:#64748b"></span>Util unknown</li>');
     els.legend.innerHTML = items.join("");
   }
@@ -568,15 +594,21 @@
     if (!cy) return;
     try {
       const msg = await connect("/bgpls.v1.EnrichmentService/GetLinkUtilization", {});
+      let hottest = 0;
       for (const u of msg.links || []) {
+        hottest = Math.max(hottest, loadBps(u));
         const edge = cy.getElementById(u.linkId);
         if (!edge || !edge.length) continue;
         const entity = edge.data("entity") || {};
         entity.utilization = u;
         edge.data("entity", entity);
+        edge.data("label", edgeLabel(entity, u));
+        const load = loadBps(u);
+        edge.data("width", load >= 500e6 ? 4 : load >= 50e6 ? 3 : num(edge.data("width")) || 1.6);
         edge.removeClass("util-unknown util-low util-mid util-high");
         edge.addClass(utilClass(u));
       }
+      setStat("util", hottest ? `hot ${formatBits(hottest)}` : "util idle");
     } catch {
       // overlay may be empty during startup
     }

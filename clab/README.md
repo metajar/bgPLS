@@ -63,7 +63,8 @@ Client certificates are `admin`, `operator`, and `reader` under `clab/pki`. Set 
 
 `tgen1` sits behind r1 (`10.10.1.0/24`) and `tgen2` behind srl2 (`10.10.2.0/24`).
 FRR nodes run snmpd; SR Linux is scraped over gNMI. `utilcol` reports rates to
-bgPLS every 10s.
+bgPLS every 10s. `traffic.sh` uses **UDP** iperf3: TCP on this veth/SR Linux
+path loses packets and stalls around 60–80 Mbps even with `-b 1000M`.
 
 ```sh
 ./clab/scripts/traffic.sh steady --rate 200M

@@ -32,17 +32,23 @@ type ifaceState struct {
 }
 
 func pathString(p *gnmi.Path) (iface, leaf string, keys map[string]string) {
+	return mergePath(nil, p)
+}
+
+func mergePath(prefix, p *gnmi.Path) (iface, leaf string, keys map[string]string) {
 	keys = map[string]string{}
-	if p == nil {
-		return "", "", keys
-	}
 	var elems []string
-	for _, e := range p.Elem {
-		elems = append(elems, e.Name)
-		for k, v := range e.Key {
-			keys[k] = v
-			if k == "name" && iface == "" {
-				iface = v
+	for _, src := range []*gnmi.Path{prefix, p} {
+		if src == nil {
+			continue
+		}
+		for _, e := range src.Elem {
+			elems = append(elems, e.Name)
+			for k, v := range e.Key {
+				keys[k] = v
+				if k == "name" && iface == "" {
+					iface = v
+				}
 			}
 		}
 	}
@@ -50,6 +56,27 @@ func pathString(p *gnmi.Path) (iface, leaf string, keys map[string]string) {
 		leaf = elems[len(elems)-1]
 	}
 	return iface, leaf, keys
+}
+
+func jsonMap(v *gnmi.TypedValue) (map[string]any, bool) {
+	if v == nil {
+		return nil, false
+	}
+	var raw any
+	switch x := v.Value.(type) {
+	case *gnmi.TypedValue_JsonIetfVal:
+		if json.Unmarshal(x.JsonIetfVal, &raw) != nil {
+			return nil, false
+		}
+	case *gnmi.TypedValue_JsonVal:
+		if json.Unmarshal(x.JsonVal, &raw) != nil {
+			return nil, false
+		}
+	default:
+		return nil, false
+	}
+	m, ok := raw.(map[string]any)
+	return m, ok
 }
 
 func parseUint(v *gnmi.TypedValue) (uint64, bool) {

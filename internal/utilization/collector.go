@@ -26,6 +26,6 @@ type Collector interface {
 	// means permanent failure (bad config), not a transient one.
 	Run(ctx context.Context, out chan<- InterfaceSample) error
 	// Describe returns a human-readable identity for logs/metrics,
-	// e.g. "gnmi:srl1:57400" or "snmp:r3:161".
+	// e.g. "gnmi:srl1:57401" or "snmp:r3:161".
 	Describe() string
 }

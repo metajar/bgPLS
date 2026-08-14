@@ -118,22 +118,24 @@ topology:
         - utilcol.yaml:/etc/bgpls/utilcol.yaml:ro
         - pki:/etc/bgpls/pki:ro
       entrypoint: /usr/local/bin/utilcol
-      command: --config /etc/bgpls/utilcol.yaml
+      cmd: --config /etc/bgpls/utilcol.yaml
 
     tgen1:
       kind: linux
       image: bgpls-tgen:local
       exec:
-        - ip addr add 10.10.1.2/24 dev eth1
+        - ip link set eth1 mtu 1500
+        - ip addr replace 10.10.1.2/24 dev eth1
         - ip link set eth1 up
-        - ip route add default via 10.10.1.1
+        - ip route replace 10.10.2.0/24 via 10.10.1.1
     tgen2:
       kind: linux
       image: bgpls-tgen:local
       exec:
-        - ip addr add 10.10.2.2/24 dev eth1
+        - ip link set eth1 mtu 1500
+        - ip addr replace 10.10.2.2/24 dev eth1
         - ip link set eth1 up
-        - ip route add default via 10.10.2.1
+        - ip route replace 10.10.1.0/24 via 10.10.2.1
 
   links:
     # BGP-LS transport only (not in IS-IS)
@@ -159,4 +161,6 @@ topology:
     - endpoints: ["r8:eth4", "srl2:ethernet-1/1"]
     - endpoints: ["srl1:ethernet-1/2", "srl2:ethernet-1/2"]
     - endpoints: ["tgen1:eth1", "r1:eth5"]
+      mtu: 1500
     - endpoints: ["tgen2:eth1", "srl2:ethernet-1/3"]
+      mtu: 1500
